@@ -1,0 +1,12 @@
+{
+  "name": "এম এস পাবলিক স্কুল - ফি ব্যবস্থাপনা",
+  "short_name": "MS ফি",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#1d4ed8",
+  "lang": "bn",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

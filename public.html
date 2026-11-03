@@ -37,8 +37,12 @@
   main.content{min-width:0}
   .topbar{background:linear-gradient(90deg,var(--brand),var(--brand-dark));color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   .topbar h1{margin:0;font-size:24px}
+  .topbar-logo{width:68px;height:68px;border-radius:50%;background:#fff;object-fit:contain;flex:0 0 auto;padding:4px;box-sizing:border-box}
   .topbar .tag{opacity:.9;font-size:13px}
-  .topbar .date{margin-left:auto;text-align:right;font-size:13px;line-height:1.4}
+  .topbar .addr{opacity:.85;margin-top:4px}
+  .topbar .date{margin-left:auto;text-align:right;font-size:13px;line-height:1.5}
+  .topbar .date .clk{font-size:20px;font-weight:700;letter-spacing:1px;margin-bottom:2px}
+  .topbar .date .lbl{display:inline-block;min-width:92px;text-align:left;opacity:.75;font-size:12px}
   .wrap{padding:16px 18px 8px}
 
   .banner{position:relative;border-radius:16px;overflow:hidden;min-height:260px;background:linear-gradient(120deg,#dbe7ff,#fff 60%,#ffe4e4);display:flex;align-items:center;padding:28px 26px}
@@ -170,6 +174,9 @@
     aside.side,main.content{min-width:0;max-width:100%}
     .side{padding:10px 0 0}
     .side .logo{display:none}
+    #banner h2,#banner .sub{display:none}
+    .side .logo img{width:60px;height:60px;border-radius:50%;object-fit:contain;background:#fff}
+    .side .logo b{font-size:17px;line-height:1.3;text-align:left}
     .side nav{display:grid;grid-template-columns:minmax(0,1fr) auto;overflow:visible;padding:0 12px 10px;gap:8px}
     .side nav a{font-size:15px;padding:10px 10px;min-width:0;white-space:normal;border:1px solid var(--line);background:var(--card)}
     .side nav a:not(:first-child){display:none}
@@ -179,10 +186,11 @@
     .side.open .more-btn{grid-column:1/-1;background:var(--card)}
     .side nav a.active{border-color:var(--brand)}
     .side nav svg{width:18px;height:18px}
-    .topbar{padding:18px 16px;gap:10px}
-    .topbar h1{font-size:26px;line-height:1.25}
-    .topbar .tag{font-size:15px}
-    .topbar .date{font-size:15px}
+    .topbar{padding:16px 16px;gap:12px}
+    .topbar-logo{width:58px;height:58px}
+    .topbar h1{font-size:34px;line-height:1.2}
+    .topbar .tag{font-size:14px}
+    .topbar .date{font-size:13px}
     .wrap{padding:14px 12px 6px}
     .banner{min-height:0;align-items:flex-start;padding:18px 20px 26px;border-radius:14px}
     .banner .txt{max-width:100%}
@@ -210,6 +218,14 @@
     footer{padding:20px 16px;font-size:16px}
     footer .row{flex-direction:column;align-items:flex-start}
   }
+  .bday-item{padding:8px 0;font-size:17px;border-bottom:1px dashed var(--line)}
+  .bday-item:last-child{border-bottom:0}
+  .bday-item{display:flex;align-items:center;gap:10px}
+  .bday-ph{width:48px;height:48px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+  .condol{border:2px solid var(--accent);border-radius:12px;padding:14px 16px;margin:0 0 12px;background:var(--card)}
+  .condol .cn{font-weight:700;color:var(--accent);font-size:17px;margin-bottom:6px;display:flex;gap:10px;align-items:center}
+  .condol .cn img{width:44px;height:44px;border-radius:50%;object-fit:cover}
+  .condol .cm{white-space:pre-line;font-size:16px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -240,9 +256,11 @@
 
   <main class="content" id="top">
     <div class="topbar">
+      <img class="topbar-logo" src="logo.png" alt="এম এস পাবলিক স্কুল লোগো">
       <div>
         <h1 class="serif" id="t-title">এম এস পাবলিক স্কুল</h1>
         <div class="tag" id="t-tag">এম এস ওয়েলফেয়ার অ্যাসোসিয়েশন কর্তৃক পরিচালিত</div>
+        <div class="tag addr">শিলখালী (সাঁকুড়পাড়), পেকুয়া, কক্সবাজার</div>
       </div>
       <div class="date" id="today-top"></div>
     </div>
@@ -254,12 +272,19 @@
         <div class="veil"></div>
         <div class="txt">
           <h2 class="serif" id="h-title">এম এস পাবলিক স্কুল</h2>
-          <p class="sub" id="h-sub">শিলখালী (সাঁকোর পাড়), পেকুয়া, কক্সবাজার</p>
+          <p class="sub" id="h-sub">শিলখালী (সাঁকুড়পাড়), পেকুয়া, কক্সবাজার</p>
           <span class="badge" id="h-badge">স্থাপিত ২০০৮ খ্রি.</span>
         </div>
       </section>
 
       <!-- পরিসংখ্যান -->
+      <section id="condolences" style="display:none"></section>
+
+      <section class="block" id="birthdays" style="display:none">
+        <h2>🎂 আজকের শুভেচ্ছা</h2>
+        <div id="bday-list"></div>
+      </section>
+
       <section class="stats">
         <div class="stat"><div class="ic" style="background:#1e6fe0"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20a7 7 0 0 1 14 0M15 14a5 5 0 0 1 7 5"/></svg></div><div><b id="s1n">২৫০+</b><span id="s1l">মোট শিক্ষার্থী</span></div></div>
         <div class="stat"><div class="ic" style="background:#15803d"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c2 2 10 2 12 0v-5"/></svg></div><div><b id="s2n">১০+</b><span id="s2l">অভিজ্ঞ শিক্ষক</span></div></div>
@@ -318,7 +343,7 @@
       <section class="block" id="about">
         <h2>আমাদের সম্পর্কে</h2>
         <div id="about-body">
-          <p>এম এস পাবলিক স্কুল ২০০৮ সালে সাঁকোর পাড় স্টেশন, শিলখালী, পেকুয়া, কক্সবাজারে স্থাপিত হয়।</p>
+          <p>এম এস পাবলিক স্কুল ২০০৮ সালে সাঁকুড়পাড় স্টেশন, শিলখালী, পেকুয়া, কক্সবাজারে স্থাপিত হয়।</p>
           <p>স্কুলটি এম এস ওয়েলফেয়ার অ্যাসোসিয়েশন কর্তৃক পরিচালিত।</p>
         </div>
       </section>
@@ -342,33 +367,49 @@
       <!-- যোগাযোগ -->
       <section class="block" id="contact">
         <h2>যোগাযোগ</h2>
-        <p><b>ঠিকানা:</b> <span id="c-address">সাঁকোর পাড় স্টেশন, শিলখালী, পেকুয়া, কক্সবাজার</span></p>
-        <p><b>মোবাইল:</b> <span id="c-phone">শীঘ্রই যুক্ত হবে</span></p>
-        <p><b>ইমেইল:</b> <span id="c-email">শীঘ্রই যুক্ত হবে</span></p>
+        <p><b>ঠিকানা:</b> <span id="c-address">সাঁকুড়পাড় স্টেশন, শিলখালী, পেকুয়া, কক্সবাজার</span></p>
+        <p><b>মোবাইল:</b> <span id="c-phone">01888315068, 01815675200</span></p>
+        <p><b>ইমেইল:</b> <span id="c-email">mspublicschool2008@gmail.com</span></p>
         <p><b>ফেসবুক:</b> <a href="https://www.facebook.com/mspublicschoolpekua" target="_blank" rel="noopener">@mspublicschoolpekua</a></p>
       </section>
     </div>
 
     <footer>
       <div class="row">
-        <span>📍 <span id="f-address">সাঁকোর পাড় স্টেশন, শিলখালী, পেকুয়া, কক্সবাজার</span></span>
-        <span>☎ <span id="f-phone">শীঘ্রই যুক্ত হবে</span></span>
-        <span>✉ <span id="f-email">শীঘ্রই যুক্ত হবে</span></span>
+        <span>📍 <span id="f-address">সাঁকুড়পাড় স্টেশন, শিলখালী, পেকুয়া, কক্সবাজার</span></span>
+        <span>☎ <span id="f-phone">01888315068, 01815675200</span></span>
+        <span>✉ <span id="f-email">mspublicschool2008@gmail.com</span></span>
       </div>
       <div class="copy">© এম এস পাবলিক স্কুল · এম এস ওয়েলফেয়ার অ্যাসোসিয়েশন কর্তৃক পরিচালিত</div>
+      <a href="admin.html" style="font-size:12px;color:inherit;opacity:.6;text-decoration:none;margin-top:6px;display:inline-block">অ্যাডমিন লগইন</a>
     </footer>
   </main>
 </div>
 
 <script>
 // আজকের তারিখ (বাংলা)
-(function today() {
+(function clock() {
+  const el = document.getElementById("today-top");
+  const big = document.getElementById("today-big");
+  const small = document.getElementById("today-small");
   const opt = { weekday:"long", year:"numeric", month:"long", day:"numeric" };
-  const d = new Date();
-  const s = d.toLocaleDateString("bn-BD", opt);
-  document.getElementById("today-top").innerHTML = s;
-  document.getElementById("today-big").textContent = d.toLocaleDateString("bn-BD", { day:"numeric", month:"long" });
-  document.getElementById("today-small").textContent = s;
+  function tick() {
+    const d = new Date();
+    const bn = d.toLocaleDateString("bn-BD", opt);
+    const en = d.toLocaleDateString("en-GB", opt);
+    let ar = "";
+    try { ar = d.toLocaleDateString("ar-SA-u-ca-islamic-umalqura", opt); } catch (e) { ar = ""; }
+    const time = d.toLocaleTimeString("bn-BD", { hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
+    el.innerHTML =
+      `<div class="clk">${time}</div>` +
+      `<div><span class="lbl">বাংলা</span> ${bn}</div>` +
+      `<div><span class="lbl">English</span> ${en}</div>` +
+      (ar ? `<div><span class="lbl">আরবি (হিজরি)</span> ${ar}</div>` : "");
+    big.textContent = d.toLocaleDateString("bn-BD", { day:"numeric", month:"long" });
+    small.textContent = bn;
+  }
+  tick();
+  setInterval(tick, 1000);
 })();
 </script>
 
@@ -389,6 +430,37 @@
 <script src="config.js"></script>
 <script>
 // অ্যাডমিনের বদলানো তথ্য (Supabase) — কনফিগ না থাকলে ডিফল্ট লেখা দেখাবে
+(async function condolences() {
+  const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
+  if (!url || !key || url.includes("PASTE") || typeof supabase === "undefined") return;
+  const sb = supabase.createClient(url, key);
+  const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  try {
+    const { data, error } = await sb.from("condolences").select("name,message,photo_url,published_at,active_until").order("published_at", { ascending: false });
+    if (error || !data || !data.length) return;
+    const box = document.getElementById("condolences");
+    box.innerHTML = data.map(c => `
+      <div class="condol"><div class="cn">${c.photo_url ? `<img src="${esc(c.photo_url)}" alt="">` : ""}<span>শোকবার্তা</span></div>
+        <div class="cm">${esc(c.message)}</div></div>`).join("");
+    box.style.display = "block";
+  } catch (e) {}
+})();
+
+(async function birthdays() {
+  const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
+  if (!url || !key || url.includes("PASTE") || typeof supabase === "undefined") return;
+  const sb = supabase.createClient(url, key);
+  const esc = t => String(t ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  try {
+    const { data, error } = await sb.rpc("today_birthdays");
+    if (error || !data || !data.length) return;
+    const dayText = (d, m) => new Date(2000, m - 1, d).toLocaleDateString("bn-BD", { day: "numeric", month: "long" });
+    document.getElementById("bday-list").innerHTML = data.map(p => `
+      <div class="bday-item">${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="" class="bday-ph">` : ""}<div>🎉 <b>${esc(p.name)}</b>${p.kind === "student" && p.class_name ? ` (${esc(p.class_name)})` : ""} — ${dayText(p.bday_day, p.bday_month)}। শুভ জন্মদিন!</div></div>`).join("");
+    document.getElementById("birthdays").style.display = "block";
+  } catch (e) {}
+})();
+
 (async function loadFromSupabase() {
   const url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
   if (!url || !key || url.includes("PASTE") || typeof supabase === "undefined") return;
@@ -417,7 +489,9 @@
     if (notices && notices.length) {
       document.getElementById("notices").innerHTML = notices.map(n => {
         const [, mo, d] = String(n.date).split("-").map(Number);
-        return `<div class="item"><span class="new">নতুন</span><div><div>${esc(n.title)}</div>
+        const t = Date.parse(n.date);
+        const isNew = !isNaN(t) && (Date.now() - t) < 7 * 864e5;   // ৭ দিনের মধ্যে হলে "নতুন"
+        return `<div class="item">${isNew ? '<span class="new">নতুন</span>' : ""}<div><div>${esc(n.title)}</div>
           <div class="dt">${d} ${MONTHS[mo-1]||""}</div>${n.body ? `<div style="color:var(--muted);font-size:13px;white-space:pre-wrap">${esc(n.body)}</div>` : ""}</div></div>`;
       }).join("");
     }

@@ -148,7 +148,7 @@
         <div><label>শ্রেণি</label><select id="s-class"></select></div>
         <div><label>জন্ম তারিখ</label><input id="s-dob" type="date"></div>
         <div><label>পরিবার আইডি</label><input id="s-family" placeholder="যেমন: F-001"></div>
-        <div><label>অভিভাবকের মোবাইল</label><input id="s-phone"></div>
+        <div><label>অভিভাবকের মোবাইল</label><input id="s-phone"><label class="check" style="margin-top:6px"><input type="checkbox" id="s-wa" style="width:auto"> এই নম্বরে হোয়াটসঅ্যাপ আছে</label></div>
         <div><label>ভর্তির ধরন</label>
           <select id="s-admission">
             <option value="old">পুরাতন শিক্ষার্থী</option>
@@ -168,6 +168,14 @@
         <div><label>ধর্ম</label><input id="s-religion" value="ইসলাম"></div>
         <div style="grid-column:1/-1"><label>স্থায়ী ঠিকানা (গ্রাম, ডাকঘর, উপজেলা, জেলা)</label><input id="s-address"></div>
         <div style="grid-column:1/-1"><label>পূর্ববর্তী প্রতিষ্ঠানের নাম ও ঠিকানা (নতুন ভর্তির ক্ষেত্রে)</label><input id="s-prev"></div>
+      </div>
+      <div style="margin-top:12px"><label>ছবি (ক্যামেরা বা ফাইল, ক্রপ করে নেওয়া যাবে)</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <img id="s-photo-prev" alt="" style="width:72px;height:72px;border-radius:10px;object-fit:cover;display:none;border:1px solid var(--line)">
+          <button type="button" class="secondary" id="s-photo-cam">📷 ক্যামেরা</button>
+          <button type="button" class="secondary" id="s-photo-file">🖼 ফাইল</button>
+          <button type="button" class="secondary" id="s-photo-del">ছবি মুছুন</button>
+        </div>
       </div>
       <button class="primary" id="s-save">যোগ করুন</button>
       <button class="secondary hidden" id="s-cancel">বাতিল</button>
@@ -229,6 +237,13 @@
 
   <!-- বকেয়া -->
   <section id="tab-dues" class="hidden">
+    <div class="card">
+      <h2>হোয়াটসঅ্যাপ বার্তা</h2>
+      <p class="msg">বকেয়া তালিকায় প্রতিজনের পাশে "হোয়াটসঅ্যাপ" চাপলে বার্তা লেখা অবস্থায় হোয়াটসঅ্যাপ খুলবে। আপনি শুধু "পাঠান" চাপবেন। লেখায় {নাম}, {শ্রেণি}, {বকেয়া}, {মোট}, {পরিশোধিত}, {তারিখ} ব্যবহার করলে প্রতিজনের তথ্য বসবে।</p>
+      <label>বার্তার লেখা</label>
+      <textarea id="wa-tpl" style="min-height:110px;width:100%"></textarea>
+      <button class="secondary" id="wa-reset">ডিফল্ট লেখা ফিরিয়ে আনুন</button>
+    </div>
     <div class="card">
       <h2>বকেয়া তালিকা</h2>
       <table>
@@ -521,6 +536,7 @@
 </main>
 </div>
 
+<script src="photo-crop.js"></script>
 <script>
 // =====================================================
 // ধ্রুবক, ফি কাঠামো ও বিষয়
@@ -541,9 +557,9 @@ const S = (name, max, monthly) => ({ name, max, monthly, pass: max >= 100 ? 33 :
 const SUBJECTS = {
   "নার্সারি":    [S("আরবি",100,true), S("বাংলা",100,true), S("গণিত",100,true), S("ইংরেজি",100,true), S("সাধারণ জ্ঞান ও অংকন",50,false)],
   "স্ট্যান্ডার্ড": [S("আরবি",100,true), S("বাংলা",100,true), S("গণিত",100,true), S("ইংরেজি",100,true), S("সাধারণ জ্ঞান ও অংকন",50,false)],
-  // ওয়ান ও টু: বিষয়ের নাম আপনার নিয়ম অনুযায়ী পরে বদলে নিন
-  "ওয়ান": [S("বিষয় ১",100,true), S("বিষয় ২",100,true), S("বিষয় ৩",100,true), S("বিষয় ৪",100,true), S("বিষয় ৫",50,false), S("বিষয় ৬",50,false), S("বিষয় ৭",50,false)],
-  "টু":    [S("বিষয় ১",100,true), S("বিষয় ২",100,true), S("বিষয় ৩",100,true), S("বিষয় ৪",100,true), S("বিষয় ৫",50,false), S("বিষয় ৬",50,false), S("বিষয় ৭",50,false)],
+  // ওয়ান ও টু: আরবি, বাংলা, গণিত, ইংরেজি (মাসিক ৫০ নম্বর); সাময়িকে সাধারণ জ্ঞান ও অংকনসহ
+  "ওয়ান": [S("আরবি",100,true), S("বাংলা ১ম",100,true), S("গণিত",100,true), S("ইংরেজি ১ম",100,true), S("ইংরেজি ২য়",50,false), S("বাংলা ২য়",50,false), S("সাধারণ জ্ঞান ও অংকন",50,false)],
+  "টু": [S("আরবি",100,true), S("বাংলা ১ম",100,true), S("গণিত",100,true), S("ইংরেজি ১ম",100,true), S("ইংরেজি ২য়",50,false), S("বাংলা ২য়",50,false), S("সাধারণ জ্ঞান ও অংকন",50,false)],
   "থ্রি":  [S("বাংলা ১ম",100,true), S("বাংলা ২য়",50,false), S("ইংরেজি ১ম",100,true), S("ইংরেজি ২য়",50,false), S("গণিত",100,true), S("বাংলাদেশ ও বিশ্বপরিচয়",100,true), S("ইসলাম শিক্ষা",100,true), S("বিজ্ঞান",100,true), S("সাধারণ জ্ঞান ও অংকন",50,false)],
   "ফোর":   [S("বাংলা ১ম",100,true), S("বাংলা ২য়",50,false), S("ইংরেজি ১ম",100,true), S("ইংরেজি ২য়",50,false), S("গণিত",100,true), S("বাংলাদেশ ও বিশ্বপরিচয়",100,true), S("ইসলাম শিক্ষা",100,true), S("বিজ্ঞান",100,true), S("সাধারণ জ্ঞান ও অংকন",50,false)],
   "ফাইভ": [S("বাংলা ১ম",100,true), S("বাংলা ২য়",50,false), S("ইংরেজি ১ম",100,true), S("ইংরেজি ২য়",50,false), S("গণিত",100,true), S("বাংলাদেশ ও বিশ্বপরিচয়",100,true), S("ইসলাম শিক্ষা",100,true), S("বিজ্ঞান",100,true), S("সাধারণ জ্ঞান ও অংকন",50,false)]
@@ -768,13 +784,77 @@ document.querySelectorAll("nav button").forEach(btn => {
 function fillClassSelect(id) {
   document.getElementById(id).innerHTML = CLASSES.map(c => `<option>${c}</option>`).join("");
 }
+// ---------- শিক্ষার্থীর ছবি (ব্রাউজারের IndexedDB-তে সংরক্ষিত) ----------
+let pendingPhoto = undefined; // undefined: বদলাবে না, null: মুছবে, Blob: নতুন ছবি
+const PHOTO_DB = "msps_photos";
+function photoDb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(PHOTO_DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("photos");
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function savePhoto(id, blob) {
+  const db = await photoDb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("photos", "readwrite");
+    tx.objectStore("photos").put(blob, String(id));
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function getPhoto(id) {
+  const db = await photoDb();
+  return new Promise((res, rej) => {
+    const q = db.transaction("photos").objectStore("photos").get(String(id));
+    q.onsuccess = () => res(q.result || null);
+    q.onerror = () => rej(q.error);
+  });
+}
+async function delPhoto(id) {
+  const db = await photoDb();
+  return new Promise(res => {
+    const tx = db.transaction("photos", "readwrite");
+    tx.objectStore("photos").delete(String(id));
+    tx.oncomplete = () => res();
+  });
+}
+function setPhotoPreview(blob) {
+  const im = document.getElementById("s-photo-prev");
+  if (blob) { im.src = URL.createObjectURL(blob); im.style.display = "inline-block"; }
+  else { im.removeAttribute("src"); im.style.display = "none"; }
+}
+function resetPhotoState() { pendingPhoto = undefined; setPhotoPreview(null); }
+async function loadPhotoForEdit(id) {
+  pendingPhoto = undefined;
+  setPhotoPreview(await getPhoto(id).catch(() => null));
+}
+async function loadThumbs() {
+  for (const im of document.querySelectorAll("img[data-thumb]")) {
+    const b = await getPhoto(im.dataset.thumb).catch(() => null);
+    if (b) { im.src = URL.createObjectURL(b); im.style.display = "inline-block"; }
+  }
+}
+document.getElementById("s-photo-cam").addEventListener("click", async () => {
+  const b = await pickAndCropPhoto(true);
+  if (b) { pendingPhoto = b; setPhotoPreview(b); }
+});
+document.getElementById("s-photo-file").addEventListener("click", async () => {
+  const b = await pickAndCropPhoto(false);
+  if (b) { pendingPhoto = b; setPhotoPreview(b); }
+});
+document.getElementById("s-photo-del").addEventListener("click", () => { pendingPhoto = null; setPhotoPreview(null); });
+
 function resetStudentForm() {
   document.getElementById("edit-id").value = "";
   ["s-name","s-dob","s-family","s-phone","s-income","s-father","s-mother","s-occupation","s-address","s-prev"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("s-religion").value = "ইসলাম";
   document.getElementById("s-admission").value = "old";
   document.getElementById("s-poor").checked = false;
+  document.getElementById("s-wa").checked = false;
   document.getElementById("form-title").textContent = "নতুন শিক্ষার্থী যোগ করুন";
+  resetPhotoState();
   document.getElementById("s-save").textContent = "যোগ করুন";
   document.getElementById("s-cancel").classList.add("hidden");
 }
@@ -795,7 +875,9 @@ function editStudent(id) {
   document.getElementById("s-address").value = s.address || "";
   document.getElementById("s-prev").value = s.prev || "";
   document.getElementById("s-poor").checked = !!s.poor;
+  document.getElementById("s-wa").checked = !!s.whatsapp;
   document.getElementById("form-title").textContent = "শিক্ষার্থীর তথ্য সম্পাদনা";
+  loadPhotoForEdit(s.id);
   document.getElementById("s-save").textContent = "হালনাগাদ করুন";
   document.getElementById("s-cancel").classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -812,7 +894,7 @@ function renderStudents() {
     ].join("");
     return `<tr>
       <td>${s.roll ?? "-"}</td>
-      <td>${esc(s.name)}</td><td>${esc(s.cls)}</td><td>${esc(s.family) || "-"}</td>
+      <td><img data-thumb="${s.id}" alt="" style="display:none;width:30px;height:30px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:6px">${esc(s.name)}</td><td>${esc(s.cls)}</td><td>${esc(s.family) || "-"}</td>
       <td>${esc(s.phone) || "-"}</td><td>${tags}</td>
       <td><button class="small" data-edit="${s.id}">সম্পাদনা</button>
           <button class="small" data-leave="${s.id}">বিদায়</button>
@@ -820,6 +902,7 @@ function renderStudents() {
     </tr>`;
   }).join("");
   tbody.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editStudent(b.dataset.edit)));
+  loadThumbs();
   tbody.querySelectorAll("[data-leave]").forEach(b => b.addEventListener("click", () => leaveStudent(b.dataset.leave)));
   tbody.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
     const s = byId(b.dataset.del);
@@ -838,6 +921,7 @@ document.getElementById("s-save").addEventListener("click", () => {
     dob: document.getElementById("s-dob").value,
     family: document.getElementById("s-family").value.trim(),
     phone: document.getElementById("s-phone").value.trim(),
+    whatsapp: document.getElementById("s-wa").checked,
     admission: document.getElementById("s-admission").value,
     income: Math.round(+document.getElementById("s-income").value) || 0,
     poor: document.getElementById("s-poor").checked,
@@ -856,6 +940,10 @@ document.getElementById("s-save").addEventListener("click", () => {
     state.students.push({ id: state.nextId++, ...data, roll: null, payments: [] });
     showMsg(msg, `"${name}" যোগ করা হয়েছে।`, true);
   }
+  const sid = editId ? +editId : state.students[state.students.length - 1].id;
+  if (pendingPhoto === null) delPhoto(sid);
+  else if (pendingPhoto) savePhoto(sid, pendingPhoto);
+  pendingPhoto = undefined;
   save(); resetStudentForm(); refreshAll();
 });
 document.getElementById("s-cancel").addEventListener("click", resetStudentForm);
@@ -947,14 +1035,15 @@ document.getElementById("al-export").addEventListener("click", () => {
 });
 
 // ---------- এক্সেল / CSV আমদানি ও রপ্তানি ----------
-const IMP_HEADERS = ["নাম","শ্রেণি","জন্ম তারিখ","পরিবার আইডি","অভিভাবকের মোবাইল","ভর্তির ধরন","বার্ষিক আয়","দরিদ্র","বাবার নাম","মায়ের নাম","পেশা","ধর্ম","ঠিকানা","পূর্ববর্তী প্রতিষ্ঠান"];
+const IMP_HEADERS = ["নাম","শ্রেণি","জন্ম তারিখ","পরিবার আইডি","অভিভাবকের মোবাইল","ভর্তির ধরন","বার্ষিক আয়","দরিদ্র","বাবার নাম","মায়ের নাম","পেশা","ধর্ম","ঠিকানা","পূর্ববর্তী প্রতিষ্ঠান","হোয়াটসঅ্যাপ"];
 const IMP_KEYS = {
   name:["নাম"], cls:["শ্রেণি"], dob:["জন্ম তারিখ"], family:["পরিবার আইডি"],
   phone:["অভিভাবকের মোবাইল","মোবাইল"], admission:["ভর্তির ধরন"],
   income:["বার্ষিক আয়","বার্ষিক পারিবারিক আয়","বার্ষিক পারিবারিক আয় (টাকা)"],
   poor:["দরিদ্র","দরিদ্র (হ্যাঁ/না)"], father:["বাবার নাম"], mother:["মায়ের নাম"],
   occupation:["পেশা","পিতার পেশা"], religion:["ধর্ম"], address:["ঠিকানা","স্থায়ী ঠিকানা"],
-  prev:["পূর্ববর্তী প্রতিষ্ঠান","পূর্ববর্তী প্রতিষ্ঠানের নাম ও ঠিকানা"]
+  prev:["পূর্ববর্তী প্রতিষ্ঠান","পূর্ববর্তী প্রতিষ্ঠানের নাম ও ঠিকানা"],
+  whatsapp:["হোয়াটসঅ্যাপ","হোয়াটসঅ্যাপ আছে"]
 };
 let pendingImport = [];
 
@@ -1033,7 +1122,8 @@ function parseImportRows(table) {
       income: Math.round(Number(normDigits(get(r, "income")).replace(/,/g, ""))) || 0,
       poor: /হ্যাঁ|হাঁ|yes|^y$|true|দরিদ্র/i.test(get(r, "poor")),
       father, mother: get(r, "mother"), occupation: get(r, "occupation"),
-      religion: get(r, "religion") || "ইসলাম", address: get(r, "address"), prev: get(r, "prev")
+      religion: get(r, "religion") || "ইসলাম", address: get(r, "address"), prev: get(r, "prev"),
+      whatsapp: /হ্যাঁ|হাঁ|yes|^y$|true|আছে/i.test(get(r, "whatsapp"))
     });
   });
   return { rows: out, errors };
@@ -1055,13 +1145,13 @@ function showImportMsg(text, ok) {
 
 document.getElementById("imp-template").addEventListener("click", () => {
   downloadCsv("msps-students-template.csv", [IMP_HEADERS,
-    ["রফিক উদ্দিন","ওয়ান","2019-03-10","F-001","01888000001","পুরাতন শিক্ষার্থী","50000","না","মো. নূর আহমেদ","কহিনুর আক্তার","ব্যবসা","ইসলাম","গ্রাম: পূর্ব মেহের নগর, ডাকঘর: পেকুয়া, উপজেলা: পেকুয়া, জেলা: কক্সবাজার",""]]);
+    ["রফিক উদ্দিন","ওয়ান","2019-03-10","F-001","01888000001","পুরাতন শিক্ষার্থী","50000","না","মো. নূর আহমেদ","কহিনুর আক্তার","ব্যবসা","ইসলাম","গ্রাম: পূর্ব মেহের নগর, ডাকঘর: পেকুয়া, উপজেলা: পেকুয়া, জেলা: কক্সবাজার","","হ্যাঁ"]]);
   showImportMsg("নমুনা ফাইল নামানো হয়েছে। প্রথম সারির উদাহরণটি মুছে আপনার তথ্য ভরুন।", true);
 });
 document.getElementById("imp-export").addEventListener("click", () => {
   const rows = state.students.map(s => [s.name, s.cls, s.dob || "", s.family || "", s.phone || "",
     s.admission === "new" ? "নতুন ভর্তি" : "পুরাতন শিক্ষার্থী", s.income || 0, s.poor ? "হ্যাঁ" : "না",
-    s.father || "", s.mother || "", s.occupation || "", s.religion || "", s.address || "", s.prev || ""]);
+    s.father || "", s.mother || "", s.occupation || "", s.religion || "", s.address || "", s.prev || "", s.whatsapp ? "হ্যাঁ" : "না"]);
   downloadCsv(`msps-students-${todayISO()}.csv`, [IMP_HEADERS, ...rows]);
   showImportMsg(`${state.students.length} জনের তালিকা এক্সপোর্ট হয়েছে।`, true);
 });
@@ -1177,7 +1267,7 @@ function letterHtml(s, date, deadline) {
     ["০৪", "সিলেবাস/ডায়েরী/ব্যাজ/বিবিধ", otherOnly],
   ].map(([n, t, v]) => `<tr><td>${n}</td><td>${t}</td><td class="num">${v ? fmt(v) : "-"}</td></tr>`).join("");
   return `<div class="tg">
-    <div class="hd"><b>এম.এস. পাবলিক স্কুল</b><small>শিলখালী (সাঁকোর পাড়), পেকুয়া, কক্সবাজার</small></div>
+    <div class="hd"><b>এম.এস. পাবলিক স্কুল</b><small>শিলখালী (সাঁকুড়পাড়), পেকুয়া, কক্সবাজার</small></div>
     <div class="ttl">তাগিদ পত্র</div>
     <div class="info">
       শিক্ষার্থীর নাম: <span>${esc(s.name)}</span><br>
@@ -1221,6 +1311,47 @@ document.getElementById("tg-print").addEventListener("click", () => {
   setTimeout(() => window.print(), 150);
 });
 
+// ---------- হোয়াটসঅ্যাপ বার্তা (wa.me লিংক, আপনি নিজে পাঠান) ----------
+const WA_DEFAULT = "আসসালামু আলাইকুম। এম এস পাবলিক স্কুল থেকে জানানো যাচ্ছে, {নাম} (শ্রেণি: {শ্রেণি}) এর বকেয়া {বকেয়া} টাকা। প্রতি মাসের {তারিখ} তারিখের মধ্যে পরিশোধ করে বিদ্যালয়ের কার্যক্রমে সহযোগিতা করার জন্য বিনীত অনুরোধ রইল। ধন্যবাদ।";
+const WA_KEY = "msps_wa_template";
+(function initWaTemplate() {
+  let saved = null;
+  try { saved = localStorage.getItem(WA_KEY); } catch (e) {}
+  document.getElementById("wa-tpl").value = saved || WA_DEFAULT;
+  document.getElementById("wa-tpl").addEventListener("input", e => {
+    try { localStorage.setItem(WA_KEY, e.target.value); } catch (err) {}
+  });
+  document.getElementById("wa-reset").addEventListener("click", () => {
+    document.getElementById("wa-tpl").value = WA_DEFAULT;
+    try { localStorage.removeItem(WA_KEY); } catch (err) {}
+  });
+})();
+function waNumber(raw) {
+  let d = String(raw ?? "").replace(/\D/g, "");
+  if (d.startsWith("880")) { /* already international */ }
+  else if (d.startsWith("0")) d = "880" + d.slice(1);
+  else return null;
+  return d.length === 13 ? d : null;
+}
+function waMessage(s) {
+  const c = calculate(s);
+  const deadline = document.getElementById("tg-deadline").value.trim() || "০৫";
+  return document.getElementById("wa-tpl").value
+    .replace(/\{নাম\}/g, s.name).replace(/\{শ্রেণি\}/g, s.cls)
+    .replace(/\{বকেয়া\}/g, fmt(c.due)).replace(/\{মোট\}/g, fmt(c.grandTotal))
+    .replace(/\{পরিশোধিত\}/g, fmt(c.paid)).replace(/\{তারিখ\}/g, deadline);
+}
+document.getElementById("d-list").addEventListener("click", e => {
+  const b = e.target.closest("[data-wa]");
+  if (!b) return;
+  const s = byId(b.dataset.wa);
+  if (!s) return;
+  const num = waNumber(s.phone);
+  if (!num) return alert(`"${s.name}" এর মোবাইল নম্বর সঠিক নেই (০১ দিয়ে ১১ সংখ্যা হতে হবে)। শিক্ষার্থী সম্পাদনা থেকে ঠিক করুন।`);
+  if (!s.whatsapp && !confirm(`"${s.name}" এর নম্বরে হোয়াটসঅ্যাপ আছে বলে চিহ্নিত করা নেই। তবুও খুলবেন?`)) return;
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(waMessage(s))}`, "_blank", "noopener");
+});
+
 function renderDues() {
   let totalDue = 0, totalPaid = 0, totalOut = 0;
   document.getElementById("d-list").innerHTML = state.students.map(s => {
@@ -1230,7 +1361,7 @@ function renderDues() {
     return `<tr>
       <td>${esc(s.name)}</td><td>${esc(s.cls)}</td>
       <td class="num">${fmt(c.grandTotal)}</td><td class="num">${fmt(c.paid)}</td>
-      <td class="num">${fmt(c.due)}</td><td>${status}</td>
+      <td class="num">${fmt(c.due)}</td><td>${status} <button class="small" data-wa="${s.id}">হোয়াটসঅ্যাপ</button></td>
     </tr>`;
   }).join("") || `<tr><td colspan="6">কোনো শিক্ষার্থী নেই</td></tr>`;
   document.getElementById("sum-count").textContent = state.students.length;
@@ -1396,7 +1527,7 @@ function marksheetSheet(s, year) {
     </div>`
     : `<p>এই শিক্ষার্থীর নম্বর এখনো এন্ট্রি হয়নি।</p>`;
   return `<div class="ms">
-    <div class="hd"><h1>এম.এস. পাবলিক স্কুল</h1><p>শিলখালী (সাঁকোর পাড়), পেকুয়া, কক্সবাজার</p></div>
+    <div class="hd"><h1>এম.এস. পাবলিক স্কুল</h1><p>শিলখালী (সাঁকুড়পাড়), পেকুয়া, কক্সবাজার</p></div>
     <div class="ttl"><span>বার্ষিক পরীক্ষার ফলাফল (মার্কশিট) — ${bnDigits(year)}</span></div>
     <div class="info">
       <div>শিক্ষার্থীর নাম: <b>${esc(s.name)}</b></div>

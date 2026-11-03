@@ -150,12 +150,65 @@
       <div id="e-list"></div>
     </div>
 
+    <!-- ব্যক্তি তালিকা (শুধু অ্যাডমিন) -->
+    <div class="card">
+      <h2>শিক্ষক ও শিক্ষার্থী তালিকা (শুধু অ্যাডমিন দেখবে)</h2>
+      <p class="note">এই তালিকা সাইটে প্রকাশ হয় না। সম্মতি থাকলে শুধু নাম, শ্রেণি, জন্মদিনের দিন ও মাস আজকের শুভেচ্ছায় দেখাবে, সাল নয়।</p>
+      <div class="grid">
+        <div><label>ধরন</label><select id="p-kind"><option value="student">শিক্ষার্থী</option><option value="teacher">শিক্ষক</option></select></div>
+        <div><label>নাম</label><input id="p-name"></div>
+        <div><label>শ্রেণি (শিক্ষার্থী)</label><input id="p-class"></div>
+        <div><label>জন্ম তারিখ</label><input id="p-dob" type="date"></div>
+        <div><label>মোবাইল</label><input id="p-phone"></div>
+        <div><label>বাবার নাম</label><input id="p-father"></div>
+        <div><label>মায়ের নাম</label><input id="p-mother"></div>
+        <div class="full"><label>ঠিকানা</label><input id="p-address"></div>
+        <div class="full"><label><input type="checkbox" id="p-consent" style="width:auto"> জন্মদিনের শুভেচ্ছায় নাম দেখানোর সম্মতি আছে</label></div>
+      </div>
+      <button class="primary" id="p-add">যোগ করুন</button>
+      <p class="msg" id="p-msg"></p>
+      <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+      <label>CSV আপলোড (প্রথম সারি শিরোনাম: ধরন, নাম, শ্রেণি, জন্ম তারিখ, মোবাইল, বাবার নাম, মায়ের নাম, ঠিকানা, সম্মতি)</label>
+      <input type="file" accept=".csv" id="p-csv">
+      <button id="p-csv-go">CSV যোগ করুন</button>
+      <p class="msg" id="p-csv-msg"></p>
+      <label>খুঁজুন (নাম)</label>
+      <input id="p-search">
+      <p class="msg" id="p-count"></p>
+      <div style="overflow-x:auto"><div id="p-list"></div></div>
+    </div>
+
+    <!-- শোকবার্তা -->
+    <div class="card">
+      <h2>শোকবার্তা</h2>
+      <p class="note">প্রকাশ করলে বার্তাটি সাইটে ৭ দিন দেখাবে, তারপর নিজে থেকে সরে যাবে। জানাজার তারিখ লেখা হবে না।</p>
+      <div class="grid">
+        <div><label>তালিকা থেকে বাছাই (ঐচ্ছিক)</label><select id="c-person"></select></div>
+        <div><label>কার সম্পর্কে</label>
+          <select id="c-rel">
+            <option value="student">আমাদের শিক্ষার্থী</option>
+            <option value="teacher">আমাদের সম্মানিত শিক্ষক</option>
+            <option value="committee">পরিচালনা কমিটির সদস্য</option>
+            <option value="family">আমাদের বিদ্যালয় পরিবারের সদস্য</option>
+          </select></div>
+        <div><label>নাম</label><input id="c-name"></div>
+        <div class="full"><label><input type="checkbox" id="c-consent" style="width:auto"> পরিবারের অনুমতি আছে (এটি না থাকলে প্রকাশ হবে না)</label></div>
+      </div>
+      <button id="c-preview">পূর্বরূপ দেখুন</button>
+      <label>বার্তা (প্রয়োজনে বদলাতে পারেন)</label>
+      <textarea id="c-text" style="min-height:120px"></textarea>
+      <button class="primary" id="c-publish">প্রকাশ করুন</button>
+      <p class="msg" id="c-msg"></p>
+      <div id="c-list"></div>
+    </div>
+
     <button id="logout">লগআউট</button>
   </div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
+<script src="photo-crop.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const configured = window.SUPABASE_URL && window.SUPABASE_ANON_KEY && !window.SUPABASE_URL.includes("PASTE");
@@ -200,7 +253,7 @@ async function loadAll() {
   const s = await getSettings();
   document.querySelectorAll("[data-key]").forEach(el => el.value = s[el.dataset.key] || "");
   ["logo_url","banner_url","side_url"].forEach(k => { const p = $("prev-"+k); if (s[k]) { p.src = s[k]; p.style.display = "block"; } else p.style.display = "none"; });
-  loadNotices(); loadEvents(); loadGallery();
+  loadNotices(); loadEvents(); loadGallery(); loadPeople(); loadCondolences();
 }
 
 // ---------- ছবি (লোগো, ব্যানার, পাশের ছবি) ----------
@@ -307,6 +360,231 @@ async function loadEvents() {
     if (!confirm("এই কার্যক্রম মুছবেন?")) return;
     await sb.from("events").delete().eq("id", b.dataset.edel);
     loadEvents();
+  });
+}
+
+// ---------- ব্যক্তি তালিকা (শিক্ষক ও শিক্ষার্থী) ----------
+const bnToEn = s => String(s ?? "").replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d)).trim();
+function normDate(s) {
+  const t = bnToEn(s);
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  m = t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  return null;
+}
+function parseCsvText(text) {
+  const rows = []; let row = [], field = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i+1] === '"') { field += '"'; i++; } else q = false; } else field += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ",") { row.push(field); field = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i+1] === "\n") i++; row.push(field); rows.push(row); row = []; field = ""; }
+    else field += ch;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(c => String(c).trim() !== ""));
+}
+function toPerson(v) {
+  const name = String(v.name || "").trim();
+  if (!name) return null;
+  return {
+    kind: /শিক্ষক|teacher/i.test(v.kind || "") ? "teacher" : "student",
+    name,
+    class_name: String(v.cls || "").trim() || null,
+    dob: normDate(v.dob),
+    phone: bnToEn(v.phone) || null,
+    father: String(v.father || "").trim() || null,
+    mother: String(v.mother || "").trim() || null,
+    address: String(v.address || "").trim() || null,
+    consent: /হ্যাঁ|হাঁ|yes|^y$|true|^1$/i.test(bnToEn(v.consent || ""))
+  };
+}
+$("p-add").onclick = async () => {
+  const p = toPerson({ kind: $("p-kind").value, name: $("p-name").value, cls: $("p-class").value,
+    dob: $("p-dob").value, phone: $("p-phone").value, father: $("p-father").value,
+    mother: $("p-mother").value, address: $("p-address").value, consent: $("p-consent").checked ? "হ্যাঁ" : "না" });
+  if (!p) return flash($("p-msg"), "নাম লিখুন।", false);
+  const { error } = await sb.from("people").insert(p);
+  if (error) return flash($("p-msg"), "যোগ করা যায়নি: " + error.message, false);
+  ["p-name","p-class","p-dob","p-phone","p-father","p-mother","p-address"].forEach(id => $(id).value = "");
+  $("p-consent").checked = false;
+  flash($("p-msg"), `"${p.name}" যোগ হয়েছে।`, true);
+  loadPeople();
+};
+$("p-csv-go").onclick = async () => {
+  const file = $("p-csv").files[0];
+  if (!file) return flash($("p-csv-msg"), "আগে CSV ফাইল বাছাই করুন।", false);
+  try {
+    const table = parseCsvText((await file.text()).replace(/^﻿/, ""));
+    if (table.length < 2) return flash($("p-csv-msg"), "ফাইলে কোনো তথ্য নেই।", false);
+    const head = table[0].map(h => h.trim());
+    const col = name => head.indexOf(name);
+    const idx = { kind: col("ধরন"), name: col("নাম"), cls: col("শ্রেণি"), dob: col("জন্ম তারিখ"), phone: col("মোবাইল"),
+      father: col("বাবার নাম"), mother: col("মায়ের নাম"), address: col("ঠিকানা"), consent: col("সম্মতি") };
+    if (idx.name < 0) return flash($("p-csv-msg"), "CSV-তে 'নাম' কলাম নেই।", false);
+    const get = (r, k) => idx[k] < 0 ? "" : (r[idx[k]] ?? "");
+    const rows = [], skipped = [];
+    table.slice(1).forEach((r, n) => {
+      const p = toPerson({ kind: get(r,"kind"), name: get(r,"name"), cls: get(r,"cls"), dob: get(r,"dob"),
+        phone: get(r,"phone"), father: get(r,"father"), mother: get(r,"mother"), address: get(r,"address"), consent: get(r,"consent") });
+      if (!p) skipped.push(n + 2); else rows.push(p);
+    });
+    for (let i = 0; i < rows.length; i += 200) {
+      const { error } = await sb.from("people").insert(rows.slice(i, i + 200));
+      if (error) throw error;
+    }
+    $("p-csv").value = "";
+    flash($("p-csv-msg"), `${rows.length} জন যোগ হয়েছে।` + (skipped.length ? ` নাম না থাকায় বাদ: সারি ${skipped.join(", ")}` : ""), true);
+    loadPeople();
+  } catch (e) { flash($("p-csv-msg"), "আপলোড ব্যর্থ: " + e.message, false); }
+};
+let peopleCache = [];
+async function loadPeople() {
+  const { data, error } = await sb.from("people").select("id,kind,name,class_name,dob,phone,consent,photo_path,public_photo_url").order("name");
+  if (error) { $("p-list").innerHTML = `<p class="note bad">তালিকা পড়া যায়নি: ${esc(error.message)}</p>`; return; }
+  const paths = (data || []).filter(p => p.photo_path).map(p => p.photo_path);
+  const urls = {};
+  if (paths.length) {
+    const { data: signed } = await sb.storage.from("student-photos").createSignedUrls(paths, 3600);
+    (signed || []).forEach(x => { if (x.path && x.signedUrl) urls[x.path] = x.signedUrl; });
+  }
+  peopleCache = (data || []).map(p => ({ ...p, photo_url: urls[p.photo_path] || null }));
+  renderPeople();
+  fillCondolencePeople();
+}
+function renderPeople() {
+  const q = $("p-search").value.trim().toLowerCase();
+  const list = peopleCache.filter(p => !q || String(p.name).toLowerCase().includes(q));
+  $("p-count").textContent = `মোট ${peopleCache.length} জন, দেখানো হচ্ছে ${list.length} জন।`;
+  $("p-list").innerHTML = list.map(p => `
+    <div class="item"><div><strong>${esc(p.name)}</strong> <span class="note">${p.kind === "teacher" ? "শিক্ষক" : "শিক্ষার্থী · " + esc(p.class_name || "-")}</span>
+      <div class="note">জন্ম: ${esc(p.dob || "-")} · মোবাইল: ${esc(p.phone || "-")} · সম্মতি: ${p.consent ? "হ্যাঁ" : "না"}</div></div>
+    <div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${p.photo_url ? `<img src="${esc(p.photo_url)}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover">` : ""}<button data-pphoto="${p.id}" data-cam="1">📷 ক্যামেরা</button><button data-pphoto="${p.id}" data-cam="0">🖼 ফাইল</button>${p.photo_path ? `<button data-pdelphoto="${p.id}">ছবি মুছুন</button>` : ""}<button data-pconsent="${p.id}">সম্মতি: ${p.consent ? "হ্যাঁ" : "না"}</button><button class="danger" data-pdel="${p.id}">মুছুন</button></div></div>`).join("") || `<p class="note">কোনো তথ্য নেই।</p>`;
+  document.querySelectorAll("[data-pdel]").forEach(b => b.onclick = async () => {
+    if (!confirm("এই ব্যক্তিকে তালিকা থেকে মুছবেন?")) return;
+    const pp = peopleCache.find(x => String(x.id) === String(b.dataset.pdel)) || {};
+    if (pp.photo_path) await sb.storage.from("student-photos").remove([pp.photo_path]);
+    const pub = storagePath(pp.public_photo_url);
+    if (pub) await sb.storage.from(BUCKET).remove([pub]);
+    await sb.from("people").delete().eq("id", b.dataset.pdel);
+    loadPeople();
+  });
+}
+$("p-search").addEventListener("input", renderPeople);
+
+async function publicCopy(blob, id) {
+  const path = `people/${id}-${Date.now()}.jpg`;
+  const { error } = await sb.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg" });
+  if (error) throw error;
+  return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+async function changePersonPhoto(id, camera) {
+  const blob = await pickAndCropPhoto(camera);
+  if (!blob) return;
+  const person = peopleCache.find(p => String(p.id) === String(id)) || {};
+  const path = `p-${id}-${Date.now()}.jpg`;
+  const { error } = await sb.storage.from("student-photos").upload(path, blob, { contentType: "image/jpeg" });
+  if (error) return alert("ছবি আপলোড ব্যর্থ: " + error.message);
+  let pubUrl = null;
+  if (person.consent) {
+    try { pubUrl = await publicCopy(blob, id); } catch (e) { alert("সাইটের জন্য ছবি যায়নি: " + e.message); }
+  }
+  const { error: uerr } = await sb.from("people").update({ photo_path: path, public_photo_url: pubUrl }).eq("id", id);
+  if (uerr) return alert("সংরক্ষণ ব্যর্থ: " + uerr.message);
+  if (person.photo_path) await sb.storage.from("student-photos").remove([person.photo_path]);
+  const oldPub = storagePath(person.public_photo_url);
+  if (oldPub) await sb.storage.from(BUCKET).remove([oldPub]);
+  loadPeople();
+}
+async function removePersonPhoto(id) {
+  if (!confirm("এই ছবিটি মুছবেন?")) return;
+  const person = peopleCache.find(p => String(p.id) === String(id)) || {};
+  if (person.photo_path) await sb.storage.from("student-photos").remove([person.photo_path]);
+  const oldPub = storagePath(person.public_photo_url);
+  if (oldPub) await sb.storage.from(BUCKET).remove([oldPub]);
+  await sb.from("people").update({ photo_path: null, public_photo_url: null }).eq("id", id);
+  loadPeople();
+}
+async function toggleConsent(id) {
+  const person = peopleCache.find(p => String(p.id) === String(id)) || {};
+  const next = !person.consent;
+  let pubUrl = null;
+  if (next && person.photo_url) {
+    try {
+      const blob = await (await fetch(person.photo_url)).blob();
+      pubUrl = await publicCopy(blob, id);
+    } catch (e) { alert("সাইটের জন্য ছবি যায়নি: " + e.message); }
+  }
+  if (!next) {
+    const oldPub = storagePath(person.public_photo_url);
+    if (oldPub) await sb.storage.from(BUCKET).remove([oldPub]);
+  }
+  const { error } = await sb.from("people").update({ consent: next, public_photo_url: next ? pubUrl : null }).eq("id", id);
+  if (error) return alert("বদলানো যায়নি: " + error.message);
+  loadPeople();
+}
+$("p-list").addEventListener("click", e => {
+  const add = e.target.closest("[data-pphoto]");
+  if (add) return changePersonPhoto(add.dataset.pphoto, add.dataset.cam === "1");
+  const del = e.target.closest("[data-pdelphoto]");
+  if (del) return removePersonPhoto(del.dataset.pdelphoto);
+  const cons = e.target.closest("[data-pconsent]");
+  if (cons) toggleConsent(cons.dataset.pconsent);
+});
+
+// ---------- শোকবার্তা ----------
+const CONDOL_DAYS = 7;
+function fillCondolencePeople() {
+  const sel = $("c-person");
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">— বাছাই করুন —</option>` +
+    peopleCache.map(p => `<option value="${p.id}">${esc(p.name)} (${p.kind === "teacher" ? "শিক্ষক" : esc(p.class_name || "শিক্ষার্থী")})</option>`).join("");
+  sel.value = cur;
+}
+$("c-person").addEventListener("change", () => {
+  const p = peopleCache.find(x => String(x.id) === $("c-person").value);
+  if (!p) return;
+  $("c-name").value = p.name;
+  $("c-rel").value = p.kind === "teacher" ? "teacher" : "student";
+});
+function condolText(rel, name) {
+  const phrase = { student: "আমাদের শিক্ষার্থী", teacher: "আমাদের সম্মানিত শিক্ষক", committee: "পরিচালনা কমিটির সদস্য", family: "আমাদের বিদ্যালয় পরিবারের সদস্য" }[rel] || "";
+  return `ইন্না লিল্লাহি ওয়া ইন্না ইলাইহি রাজিউন।\n${phrase} ${name} ইন্তেকাল করেছেন। এম এস পাবলিক স্কুল পরিবার গভীরভাবে শোকাহত। আমরা মহান আল্লাহর কাছে তাঁর রুহের মাগফিরাত কামনা করছি এবং শোকসন্তপ্ত পরিবারের প্রতি গভীর সমবেদনা জানাই।`;
+}
+$("c-preview").onclick = () => {
+  const name = $("c-name").value.trim();
+  if (!name) return flash($("c-msg"), "নাম লিখুন।", false);
+  $("c-text").value = condolText($("c-rel").value, name);
+  flash($("c-msg"), "পূর্বরূপ তৈরি হয়েছে। প্রয়োজনে বদলিয়ে প্রকাশ করুন।", true);
+};
+$("c-publish").onclick = async () => {
+  const name = $("c-name").value.trim();
+  const message = $("c-text").value.trim();
+  if (!name || !message) return flash($("c-msg"), "নাম ও বার্তা দুটোই লাগবে। আগে পূর্বরূপ দেখুন।", false);
+  if (!$("c-consent").checked) return flash($("c-msg"), "পরিবারের অনুমতি টিক দিন। না থাকলে প্রকাশ হবে না।", false);
+  const person = peopleCache.find(x => String(x.id) === $("c-person").value);
+  const until = new Date(Date.now() + CONDOL_DAYS * 86400000).toISOString();
+  const { error } = await sb.from("condolences").insert({
+    name, relation: $("c-rel").value, message, photo_url: person ? (person.public_photo_url || null) : null,
+    family_consent: true, active_until: until
+  });
+  if (error) return flash($("c-msg"), "প্রকাশ করা যায়নি: " + error.message, false);
+  flash($("c-msg"), `প্রকাশিত হয়েছে। ${CONDOL_DAYS} দিন পর নিজে থেকে সরে যাবে।`, true);
+  $("c-name").value = ""; $("c-text").value = ""; $("c-consent").checked = false; $("c-person").value = "";
+  loadCondolences();
+};
+async function loadCondolences() {
+  const { data } = await sb.from("condolences").select("*").gt("active_until", new Date().toISOString()).order("published_at", { ascending: false });
+  $("c-list").innerHTML = (data || []).map(c => `
+    <div class="item"><div><strong>${esc(c.name)}</strong> <span class="note">প্রকাশ: ${esc(c.published_at.slice(0,10))} · শেষ: ${esc(c.active_until.slice(0,10))}</span>
+      <div style="white-space:pre-line">${esc(c.message)}</div></div>
+    <button class="danger" data-cdel="${c.id}">সরিয়ে দিন</button></div>`).join("") || `<p class="note">এখন কোনো শোকবার্তা প্রকাশিত নেই।</p>`;
+  document.querySelectorAll("[data-cdel]").forEach(b => b.onclick = async () => {
+    if (!confirm("এই শোকবার্তাটি এখনই সরাবেন?")) return;
+    await sb.from("condolences").delete().eq("id", b.dataset.cdel);
+    loadCondolences();
   });
 }
 
