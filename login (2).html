@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>লগইন · এম এস পাবলিক স্কুল</title>
+<meta name="theme-color" content="#1e2a78">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="logo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap">
+<style>
+  :root{--brand:#1e2a78;--brand-dark:#141d5a;--brand-soft:#e9ecf8;--bg:#eef2f9;--card:#fff;--fg:#14182b;--muted:#5b6275;--line:#e2e6ef;--bad:#b42318;--bad-soft:#fdecec;--ok:#15803d;--ok-soft:#e7f6ec;color-scheme:light}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans Bengali","Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.6;min-height:100vh;background:linear-gradient(180deg,var(--brand),var(--brand-dark) 260px,var(--bg) 260px)}
+  .wrap{max-width:420px;margin:0 auto;padding:24px 16px 40px}
+  .head{color:#fff;text-align:center;padding:16px 0 26px}
+  .head img{width:96px;height:96px;object-fit:contain;border-radius:50%;background:#fff;padding:4px}
+  .head h1{margin:10px 0 2px;font-size:20px}
+  .head p{margin:0;opacity:.85;font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 6px 18px rgba(20,29,90,.08)}
+  label{display:block;font-weight:600;font-size:14px;margin:12px 0 4px}
+  input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--fg)}
+  input:focus{outline:2px solid var(--brand);outline-offset:0;border-color:var(--brand)}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  button{font:inherit;cursor:pointer;border-radius:10px;padding:11px 14px;border:1px solid var(--line);background:#fff;color:var(--fg);width:100%;margin-top:14px}
+  button.primary{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:700}
+  button:disabled{opacity:.6;cursor:wait}
+  .msg{margin:12px 0 0;padding:10px 12px;border-radius:10px;font-size:14px;display:none}
+  .msg.show{display:block}
+  .msg.bad{background:var(--bad-soft);color:var(--bad)}
+  .msg.ok{background:var(--ok-soft);color:var(--ok)}
+  .view{display:none}
+  .view.show{display:block}
+  .role{display:inline-block;background:var(--brand-soft);color:var(--brand);padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600}
+  .sec{margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+  .sec h2{font-size:16px;margin:0 0 4px;color:var(--brand)}
+  .row{display:flex;gap:8px}
+  .row button{margin-top:14px}
+  .link{background:none;border:none;color:var(--brand);padding:6px 0;margin-top:6px;width:auto;text-decoration:underline}
+  .muted{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <img src="logo.png" alt="এম এস পাবলিক স্কুল লোগো">
+    <h1>এম এস পাবলিক স্কুল</h1>
+    <p>ব্যবস্থাপনা ও অভিভাবক প্রবেশ</p>
+  </header>
+
+  <!-- লগইন ফর্ম -->
+  <section class="card view show" id="v-login">
+    <form id="login-form" autocomplete="on" novalidate>
+      <label for="login-id">লগইন আইডি</label>
+      <input id="login-id" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="আইডি বা অভিভাবকের মোবাইল" required>
+      <div class="hint">কর্মীর আইডি বা অভিভাবকের মোবাইল নম্বর (০১… দিয়ে শুরু, ১১ সংখ্যা)</div>
+
+      <label for="login-pin">PIN (৮ সংখ্যা)</label>
+      <input id="login-pin" name="password" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••••••" required>
+
+      <button class="primary" type="submit" id="login-btn">প্রবেশ করুন</button>
+      <div class="msg" id="login-msg" role="alert"></div>
+    </form>
+  </section>
+
+  <!-- লগইন হওয়ার পর -->
+  <section class="card view" id="v-home">
+    <p>স্বাগতম, <b id="who-name">—</b></p>
+    <p>ভূমিকা: <span class="role" id="who-role">—</span></p>
+    <p class="muted" id="who-note"></p>
+
+    <div class="sec">
+      <h2>PIN বদলান</h2>
+      <label for="cur-pin">বর্তমান PIN</label>
+      <input id="cur-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password">
+      <label for="new-pin">নতুন PIN (৮ সংখ্যা)</label>
+      <input id="new-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
+      <label for="new-pin2">নতুন PIN আবার লিখুন</label>
+      <input id="new-pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
+      <button type="button" id="pin-change-btn">PIN বদলান</button>
+      <div class="msg" id="pin-msg" role="status"></div>
+    </div>
+
+    <button type="button" class="link" id="logout-btn">লগআউট</button>
+  </section>
+
+  <p class="muted" style="text-align:center;margin-top:18px">
+    <a href="public.html" style="color:var(--brand)">পাবলিক ওয়েবসাইট</a>
+  </p>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  const EMAIL_DOMAIN = "msps.local";
+  const $ = (id) => document.getElementById(id);
+
+  function showMsg(el, text, ok) {
+    el.textContent = text;
+    el.className = "msg show " + (ok ? "ok" : "bad");
+  }
+  function clearMsg(el) { el.textContent = ""; el.className = "msg"; }
+
+  // ক্লায়েন্ট কনফিগ না থাকলে বা Supabase লোড না হলে স্পষ্ট বার্তা
+  if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+    showMsg($("login-msg"), "সংযোগ সেটআপ হয়নি। config.js ও ইন্টারনেট সংযোগ যাচাই করুন।", false);
+    $("login-btn").disabled = true;
+    return;
+  }
+  const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true },
+  });
+
+  // আইডি → Supabase ইমেইল। ব্যবহারকারী ইমেইল দেখবেন না।
+  function toEmail(raw) {
+    const id = String(raw || "").trim();
+    if (/^0?1[0-9]{9}$/.test(id)) return "880" + id.replace(/^0/, "") + "@" + EMAIL_DOMAIN;  // মোবাইল → 880… অভিভাবক আইডি
+    return id.toLowerCase() + "@" + EMAIL_DOMAIN;
+  }
+  const validPin = (p) => /^[0-9]{8}$/.test(p);
+
+  // ইনপুট: শুধু সংখ্যা রাখা
+  ["login-pin", "cur-pin", "new-pin", "new-pin2"].forEach((id) => {
+    $(id).addEventListener("input", (e) => { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 8); });
+  });
+
+  // ভূমিকা অনুযায়ী দেখানো
+  async function showHome(user) {
+    const { data: roleRow, error } = await sb.from("user_roles")
+      .select("role, status, login_id").eq("user_id", user.id).maybeSingle();
+    if (error || !roleRow || roleRow.status !== "active") {
+      await sb.auth.signOut();
+      showMsg($("login-msg"), "এই অ্যাকাউন্টের অনুমতি নেই। প্রধান শিক্ষকের সঙ্গে যোগাযোগ করুন।", false);
+      $("v-login").classList.add("show"); $("v-home").classList.remove("show");
+      return;
+    }
+    const roleName = { head: "প্রধান শিক্ষক", class_teacher: "শ্রেণিশিক্ষক", parent: "অভিভাবক" }[roleRow.role] || roleRow.role;
+    $("who-name").textContent = roleRow.login_id || user.email;
+    $("who-role").textContent = roleName;
+    $("who-note").textContent = roleRow.role === "parent"
+      ? "সন্তানের তথ্য দেখার পেজ পরবর্তী ধাপে যুক্ত হবে।"
+      : "ব্যবস্থাপনা পেজ পরবর্তী ধাপে যুক্ত হবে।";
+    $("v-login").classList.remove("show");
+    $("v-home").classList.add("show");
+  }
+
+  // লগইন
+  $("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearMsg($("login-msg"));
+    const idRaw = $("login-id").value.trim();
+    const pin = $("login-pin").value;
+    if (!idRaw) return showMsg($("login-msg"), "লগইন আইডি লিখুন।", false);
+    if (!validPin(pin)) return showMsg($("login-msg"), "PIN অবশ্যই ৮ সংখ্যার হতে হবে।", false);
+
+    const btn = $("login-btn");
+    btn.disabled = true; btn.textContent = "যাচাই হচ্ছে…";
+    const { data, error } = await sb.auth.signInWithPassword({ email: toEmail(idRaw), password: pin });
+    btn.disabled = false; btn.textContent = "প্রবেশ করুন";
+    $("login-pin").value = "";
+
+    if (error || !data?.user) {
+      // কোন অংশ ভুল, তা না জানিয়ে সাধারণ বার্তা (আইডি গোপন রাখতে)
+      return showMsg($("login-msg"), "আইডি বা PIN সঠিক নয়। আবার চেষ্টা করুন।", false);
+    }
+    await showHome(data.user);
+  });
+
+  // PIN বদলানো: আগে বর্তমান PIN যাচাই, তারপর নতুন PIN
+  $("pin-change-btn").addEventListener("click", async () => {
+    clearMsg($("pin-msg"));
+    const cur = $("cur-pin").value, n1 = $("new-pin").value, n2 = $("new-pin2").value;
+    if (!validPin(cur)) return showMsg($("pin-msg"), "বর্তমান PIN ৮ সংখ্যার হতে হবে।", false);
+    if (!validPin(n1)) return showMsg($("pin-msg"), "নতুন PIN ৮ সংখ্যার হতে হবে।", false);
+    if (n1 !== n2) return showMsg($("pin-msg"), "নতুন PIN দুবার একই হতে হবে।", false);
+    if (n1 === cur) return showMsg($("pin-msg"), "নতুন PIN আগেরটির চেয়ে আলাদা হতে হবে।", false);
+
+    const { data: me } = await sb.auth.getUser();
+    if (!me?.user) return showMsg($("pin-msg"), "আবার লগইন করুন।", false);
+    const check = await sb.auth.signInWithPassword({ email: me.user.email, password: cur });
+    if (check.error) return showMsg($("pin-msg"), "বর্তমান PIN সঠিক নয়।", false);
+
+    const { error } = await sb.auth.updateUser({ password: n1 });
+    ["cur-pin", "new-pin", "new-pin2"].forEach((id) => { $(id).value = ""; });
+    if (error) return showMsg($("pin-msg"), "PIN বদলানো যায়নি: " + error.message, false);
+    showMsg($("pin-msg"), "PIN বদলানো হয়েছে।", true);
+  });
+
+  $("logout-btn").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    $("v-home").classList.remove("show");
+    $("v-login").classList.add("show");
+    clearMsg($("login-msg"));
+  });
+
+  // আগে থেকে লগইন থাকলে সরাসরি হোম
+  sb.auth.getSession().then(({ data }) => { if (data?.session?.user) showHome(data.session.user); });
+})();
+</script>
+</body>
+</html>

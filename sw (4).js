@@ -1,0 +1,34 @@
+// অফলাইনে কাজ করার জন্য: অ্যাপের ফাইলগুলো ক্যাশে রাখে।
+// ফাইল পরিবর্তন করলে CACHE_NAME-এর সংখ্যা বাড়িয়ে দিন, যাতে নতুন সংস্করণ নেওয়া হয়।
+const CACHE_NAME = "msps-v21";
+const ASSETS = ["./", "./index.html", "./login.html", "./manifest.webmanifest", "./photo-crop.js"];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return res;
+        })
+        .catch(() => caches.match("./index.html"));
+    })
+  );
+});
