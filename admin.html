@@ -88,6 +88,13 @@
     <div class="card">
       <div class="sec-head"><h2 style="border:0;margin:0;padding:0">গ্যালারি</h2></div>
       <label>একাধিক ছবি একসাথে বাছাই করুন</label>
+      <div class="grid">
+        <div><label>ধরন</label><select id="gal-cat">
+          <option>ভবন</option><option>শ্রেণিকক্ষ</option><option>শিক্ষার্থীদের কার্যক্রম</option>
+          <option>অনুষ্ঠান</option><option>পুরস্কার বিতরণ</option><option>শিক্ষকবৃন্দ</option><option>অন্যান্য</option>
+        </select></div>
+        <div><label>শিরোনাম (ঐচ্ছিক)</label><input id="gal-caption"></div>
+      </div>
       <input type="file" accept="image/*" multiple id="gal-files">
       <button class="primary" id="gal-upload">গ্যালারিতে যোগ করুন</button>
       <p class="msg" id="gal-msg"></p>
@@ -132,10 +139,30 @@
         <div><label>শিরোনাম</label><input id="n-title"></div>
         <div><label>তারিখ</label><input id="n-date" type="date"></div>
         <div class="full"><label>বিস্তারিত</label><textarea id="n-body"></textarea></div>
+        <div class="full"><label>সংযুক্ত PDF বা ছবি (ঐচ্ছিক)</label><input type="file" id="n-file" accept="application/pdf,image/*"></div>
       </div>
       <button class="primary" id="n-add">নোটিশ যোগ করুন</button>
       <p class="msg" id="n-msg"></p>
       <div id="n-list"></div>
+    </div>
+
+    <!-- ডাউনলোড -->
+    <div class="card">
+      <h2>ডাউনলোড (রুটিন, সিলেবাস, প্রসপেক্টাস, প্রশ্নব্যাংক)</h2>
+      <div class="grid">
+        <div><label>শিরোনাম</label><input id="d-title"></div>
+        <div><label>ধরন</label><select id="d-cat">
+          <option value="routine">ক্লাস/পরীক্ষার রুটিন</option>
+          <option value="syllabus">সিলেবাস</option>
+          <option value="prospectus">প্রসপেক্টাস</option>
+          <option value="question">প্রশ্নব্যাংক</option>
+          <option value="other">অন্যান্য</option>
+        </select></div>
+        <div class="full"><label>ফাইল (PDF বা ছবি, সর্বোচ্চ ১০ MB)</label><input type="file" id="d-file" accept="application/pdf,image/*"></div>
+      </div>
+      <button class="primary" id="d-add">ফাইল যোগ করুন</button>
+      <p class="msg" id="d-msg"></p>
+      <div id="d-list"></div>
     </div>
 
     <!-- কার্যক্রম -->
@@ -268,7 +295,7 @@ async function loadAll() {
   const s = await getSettings();
   document.querySelectorAll("[data-key]").forEach(el => el.value = s[el.dataset.key] || "");
   ["logo_url","banner_url","side_url"].forEach(k => { const p = $("prev-"+k); if (s[k]) { p.src = s[k]; p.style.display = "block"; } else p.style.display = "none"; });
-  loadNotices(); loadEvents(); loadGallery(); loadPeople(); loadCondolences();
+  loadNotices(); loadEvents(); loadGallery(); loadDocs(); loadPeople(); loadCondolences();
 }
 
 // ---------- ছবি (লোগো, ব্যানার, পাশের ছবি) ----------
@@ -312,7 +339,7 @@ $("gal-upload").onclick = async () => {
   try {
     for (const f of files) {
       const url = await uploadFile(f, "gallery");
-      const { error } = await sb.from("gallery").insert({ url, caption: "" });
+      const { error } = await sb.from("gallery").insert({ url, caption: $("gal-caption").value.trim(), category: $("gal-cat").value });
       if (error) throw error;
     }
     $("gal-files").value = "";
@@ -334,15 +361,58 @@ async function loadGallery() {
   });
 }
 
+// ---------- ডাউনলোড (PDF/ছবি) ----------
+const DOC_LABEL = { routine:"রুটিন", syllabus:"সিলেবাস", prospectus:"প্রসপেক্টাস", question:"প্রশ্নব্যাংক", other:"অন্যান্য" };
+$("d-add").onclick = async () => {
+  const title = $("d-title").value.trim();
+  const file = $("d-file").files[0];
+  if (!title) return flash($("d-msg"), "শিরোনাম লিখুন।", false);
+  if (!file) return flash($("d-msg"), "ফাইল বাছাই করুন।", false);
+  if (file.size > 10 * 1024 * 1024) return flash($("d-msg"), "ফাইল ১০ MB-এর বেশি হতে পারবে না।", false);
+  try {
+    const url = await uploadFile(file, "doc");
+    const { error } = await sb.from("documents").insert({ title, category: $("d-cat").value, file_url: url, file_name: file.name });
+    if (error) throw error;
+    $("d-title").value = ""; $("d-file").value = "";
+    flash($("d-msg"), "ফাইল যোগ হয়েছে।", true);
+    loadDocs();
+  } catch (e) { flash($("d-msg"), "যোগ করা যায়নি: " + e.message, false); }
+};
+async function loadDocs() {
+  const { data } = await sb.from("documents").select("*").order("created_at", { ascending: false });
+  $("d-list").innerHTML = (data || []).map(d => `
+    <div class="item"><div><strong>${esc(d.title)}</strong><div class="note">${DOC_LABEL[d.category] || ""} · ${d.status === "active" ? "প্রকাশিত" : "লুকানো"}</div>
+    <a href="${esc(d.file_url)}" target="_blank" rel="noopener">ফাইল দেখুন</a></div>
+    <div><button data-dtoggle="${d.id}" data-next="${d.status === "active" ? "inactive" : "active"}">${d.status === "active" ? "লুকান" : "প্রকাশ"}</button>
+    <button class="danger" data-ddel="${d.id}" data-url="${esc(d.file_url)}">মুছুন</button></div></div>`).join("")
+    || `<p class="note">কোনো ফাইল নেই।</p>`;
+  document.querySelectorAll("[data-dtoggle]").forEach(b => b.onclick = async () => {
+    await sb.from("documents").update({ status: b.dataset.next }).eq("id", b.dataset.dtoggle);
+    loadDocs();
+  });
+  document.querySelectorAll("[data-ddel]").forEach(b => b.onclick = async () => {
+    if (!confirm("এই ফাইলটি মুছবেন?")) return;
+    const path = storagePath(b.dataset.url);
+    if (path) await sb.storage.from(BUCKET).remove([path]);
+    await sb.from("documents").delete().eq("id", b.dataset.ddel);
+    loadDocs();
+  });
+}
+
 // ---------- নোটিশ ----------
 $("n-add").onclick = async () => {
   const title = $("n-title").value.trim();
   if (!title) return flash($("n-msg"), "শিরোনাম লিখুন।", false);
-  const { error } = await sb.from("notices").insert({ title, body: $("n-body").value.trim(), date: $("n-date").value || new Date().toISOString().slice(0,10) });
-  if (error) return flash($("n-msg"), "যোগ করা যায়নি।", false);
-  $("n-title").value = ""; $("n-body").value = "";
-  flash($("n-msg"), "নোটিশ যোগ হয়েছে।", true);
-  loadNotices();
+  const file = $("n-file").files[0];
+  try {
+    let attachment_url = null, attachment_name = null;
+    if (file) { attachment_url = await uploadFile(file, "notice"); attachment_name = file.name; }
+    const { error } = await sb.from("notices").insert({ title, body: $("n-body").value.trim(), date: $("n-date").value || new Date().toISOString().slice(0,10), attachment_url, attachment_name });
+    if (error) throw error;
+    $("n-title").value = ""; $("n-body").value = ""; $("n-file").value = "";
+    flash($("n-msg"), "নোটিশ যোগ হয়েছে।", true);
+    loadNotices();
+  } catch (e) { flash($("n-msg"), "যোগ করা যায়নি: " + e.message, false); }
 };
 async function loadNotices() {
   const { data } = await sb.from("notices").select("*").order("date", { ascending: false });
