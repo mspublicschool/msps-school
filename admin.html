@@ -236,15 +236,30 @@ async function getSettings() {
 }
 
 // ---------- লগইন ----------
+// প্রধান শিক্ষকের ভূমিকা আছে কিনা (user_roles)। না থাকলে লেখা ও আপলোড ব্যর্থ হবে।
+async function isHead() {
+  const { data: u } = await sb.auth.getUser();
+  if (!u?.user) return false;
+  const { data: r, error } = await sb.from("user_roles").select("role,status").eq("user_id", u.user.id).maybeSingle();
+  return !error && !!r && r.role === "head" && r.status === "active";
+}
 async function init() {
   if (!sb) return;
   const { data } = await sb.auth.getSession();
-  if (data.session) showPanel(); else $("login-box").classList.remove("hidden");
+  if (!data.session) return $("login-box").classList.remove("hidden");
+  if (await isHead()) return showPanel();
+  await sb.auth.signOut();
+  $("login-box").classList.remove("hidden");
+  flash($("login-msg"), "এই অ্যাকাউন্টের প্রধান শিক্ষকের অনুমতি নেই।", false);
 }
 function showPanel() { $("login-box").classList.add("hidden"); $("panel").classList.remove("hidden"); loadAll(); }
 $("login-btn").onclick = async () => {
   const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
   if (error) return flash($("login-msg"), "ইমেইল বা পাসওয়ার্ড ভুল।", false);
+  if (!(await isHead())) {
+    await sb.auth.signOut();
+    return flash($("login-msg"), "এই অ্যাকাউন্টের প্রধান শিক্ষকের অনুমতি নেই।", false);
+  }
   showPanel();
 };
 $("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); };
