@@ -37,6 +37,8 @@
   .row button{margin-top:14px}
   .link{background:none;border:none;color:var(--brand);padding:6px 0;margin-top:6px;width:auto;text-decoration:underline}
   .muted{color:var(--muted);font-size:13px}
+  .btnlink{display:block;text-align:center;background:var(--brand);color:#fff;text-decoration:none;font-weight:700;border-radius:10px;padding:12px 14px;margin:14px 0 4px}
+  .hidden{display:none !important}
 </style>
 </head>
 <body>
@@ -67,6 +69,7 @@
     <p>স্বাগতম, <b id="who-name">—</b></p>
     <p>ভূমিকা: <span class="role" id="who-role">—</span></p>
     <p class="muted" id="who-note"></p>
+    <a id="go-app" href="index.html" class="btnlink hidden">ম্যানেজমেন্ট অ্যাপ খুলুন</a>
 
     <div class="sec">
       <h2>PIN বদলান</h2>
@@ -137,9 +140,11 @@
     const roleName = { head: "প্রধান শিক্ষক", class_teacher: "শ্রেণিশিক্ষক", parent: "অভিভাবক" }[roleRow.role] || roleRow.role;
     $("who-name").textContent = roleRow.login_id || user.email;
     $("who-role").textContent = roleName;
-    $("who-note").textContent = roleRow.role === "parent"
-      ? "সন্তানের তথ্য দেখার পেজ পরবর্তী ধাপে যুক্ত হবে।"
-      : "ব্যবস্থাপনা পেজ পরবর্তী ধাপে যুক্ত হবে।";
+    const canApp = roleRow.role === "head" || roleRow.role === "class_teacher";
+    $("go-app").classList.toggle("hidden", !canApp);
+    $("who-note").textContent = canApp
+      ? "ম্যানেজমেন্ট অ্যাপে শিক্ষার্থী, ফি ও নম্বরের কাজ করতে নিচের বোতাম চাপুন।"
+      : "সন্তানের তথ্য দেখার পেজ পরবর্তী ধাপে যুক্ত হবে।";
     $("v-login").classList.remove("show");
     $("v-home").classList.add("show");
   }
