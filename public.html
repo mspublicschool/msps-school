@@ -226,6 +226,18 @@
   .condol .cn{font-weight:700;color:var(--accent);font-size:17px;margin-bottom:6px;display:flex;gap:10px;align-items:center}
   .condol .cn img{width:44px;height:44px;border-radius:50%;object-fit:cover}
   .condol .cm{white-space:pre-line;font-size:16px;line-height:1.7}
+  /* বৃত্তিপ্রাপ্ত স্লাইডশো */
+  .slides{position:relative;min-height:220px}
+  .slide{display:none;text-align:center}
+  .slide.on{display:block}
+  .slide img{width:140px;height:140px;object-fit:cover;border-radius:50%;border:3px solid var(--brand-soft)}
+  .slide .ph{width:140px;height:140px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:inline-flex;align-items:center;justify-content:center;font-size:44px;font-weight:700}
+  .slide h3{margin:10px 0 2px;font-size:18px}
+  .slide .sub{color:var(--muted);font-size:14px}
+  .slide-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px}
+  .slide-nav button{border:1px solid var(--line);background:#fff;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer;color:var(--brand)}
+  .slide-nav .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line);margin:0 3px;cursor:pointer;vertical-align:middle}
+  .slide-nav .dot.on{background:var(--brand)}
 </style>
 </head>
 <body>
@@ -281,6 +293,12 @@
 
       <!-- পরিসংখ্যান -->
       <section id="condolences" style="display:none"></section>
+
+      <section class="block" id="scholars" style="display:none">
+        <h2>আমাদের বৃত্তিপ্রাপ্ত শিক্ষার্থী</h2>
+        <div class="slides" id="sc-slides"></div>
+        <div class="slide-nav"><button type="button" id="sc-prev" aria-label="আগের">‹</button><span id="sc-dots"></span><button type="button" id="sc-next" aria-label="পরের">›</button></div>
+      </section>
 
       <section class="block" id="birthdays" style="display:none">
         <h2>🎂 আজকের শুভেচ্ছা</h2>
@@ -502,9 +520,35 @@
           <div class="dt">${d} ${MONTHS[mo-1]||""}</div>${n.body ? `<div style="color:var(--muted);font-size:13px;white-space:pre-wrap">${esc(n.body)}</div>` : ""}${n.attachment_url ? `<a href="${esc(n.attachment_url)}" target="_blank" rel="noopener" style="font-size:13px">📎 ${esc(n.attachment_name || "সংযুক্ত ফাইল")}</a>` : ""}</div></div>`;
       }).join("");
     }
+    const { data: scholars } = await sb.from("scholarship_recipients").select("name,class_name,scholarship_name,provider,year,photo_url").order("created_at", { ascending: false });
+    if (scholars && scholars.length) {
+      document.getElementById("scholars").style.display = "";
+      const slidesEl = document.getElementById("sc-slides");
+      slidesEl.innerHTML = scholars.map(r => `
+        <div class="slide">
+          ${r.photo_url ? `<img src="${esc(r.photo_url)}" alt="${esc(r.name)}" loading="lazy">` : `<span class="ph">${esc((r.name || "?").charAt(0))}</span>`}
+          <h3>${esc(r.name)}</h3>
+          <div class="sub">${r.class_name ? esc(r.class_name) + " · " : ""}${esc(r.scholarship_name)}</div>
+          <div class="sub">${esc(r.provider)}${r.year ? " · " + r.year : ""}</div>
+        </div>`).join("");
+      let idx = 0, timer = null;
+      const slides = [...slidesEl.querySelectorAll(".slide")];
+      const dots = document.getElementById("sc-dots");
+      dots.innerHTML = slides.map((_, i) => `<span class="dot" data-i="${i}"></span>`).join("");
+      const show = i => {
+        idx = (i + slides.length) % slides.length;
+        slides.forEach((el, k) => el.classList.toggle("on", k === idx));
+        dots.querySelectorAll(".dot").forEach((d, k) => d.classList.toggle("on", k === idx));
+      };
+      const restart = () => { clearInterval(timer); if (slides.length > 1) timer = setInterval(() => show(idx + 1), 4500); };
+      document.getElementById("sc-prev").onclick = () => { show(idx - 1); restart(); };
+      document.getElementById("sc-next").onclick = () => { show(idx + 1); restart(); };
+      dots.onclick = e => { const d = e.target.closest(".dot"); if (d) { show(+d.dataset.i); restart(); } };
+      show(0); restart();
+    }
     const { data: docs } = await sb.from("documents").select("*").eq("status", "active").order("created_at", { ascending: false });
     if (docs && docs.length) {
-      const LBL = { routine:"রুটিন", syllabus:"সিলেবাস", prospectus:"প্রসপেক্টাস", question:"প্রশ্নব্যাংক", other:"অন্যান্য" };
+      const LBL = { routine:"রুটিন", syllabus:"সিলেবাস", prospectus:"প্রসপেক্টাস", question:"প্রশ্নব্যাংক", booklist:"বুকলিস্ট", other:"অন্যান্য" };
       document.getElementById("doc-list").innerHTML = docs.map(d => `
         <div class="item"><div><div>${esc(d.title)}</div><div class="dt">${LBL[d.category] || ""}</div>
         <a href="${esc(d.file_url)}" target="_blank" rel="noopener">ডাউনলোড করুন</a></div></div>`).join("");

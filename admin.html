@@ -146,6 +146,24 @@
       <div id="n-list"></div>
     </div>
 
+    <!-- বৃত্তিপ্রাপ্ত শিক্ষার্থী -->
+    <div class="card">
+      <h2>বৃত্তিপ্রাপ্ত শিক্ষার্থী (পাবলিক স্লাইডশো)</h2>
+      <p class="note">শুধু অভিভাবকের লিখিত সম্মতি থাকলে "সম্মতি আছে" টিক দিন। ফোন, ঠিকানা, আয়ের তথ্য এখানে লিখবেন না।</p>
+      <div class="grid">
+        <div><label>শিক্ষার্থীর নাম</label><input id="sc-name"></div>
+        <div><label>শ্রেণি</label><input id="sc-class" placeholder="যেমন: ফাইভ"></div>
+        <div><label>বৃত্তির নাম</label><input id="sc-scholarship" placeholder="যেমন: প্রাথমিক উপবৃত্তি"></div>
+        <div><label>উৎস</label><select id="sc-provider"><option>সরকারি</option><option>বেসরকারি</option></select></div>
+        <div><label>বছর</label><input id="sc-year" type="number" value="2026"></div>
+        <div class="full"><label>ছবি (ঐচ্ছিক)</label><input type="file" id="sc-file" accept="image/*"></div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-weight:400"><input type="checkbox" id="sc-consent" style="width:auto"> অভিভাবকের লিখিত সম্মতি আছে</label>
+      <button class="primary" id="sc-add">যোগ করুন</button>
+      <p class="msg" id="sc-msg"></p>
+      <div id="sc-list"></div>
+    </div>
+
     <!-- ডাউনলোড -->
     <div class="card">
       <h2>ডাউনলোড (রুটিন, সিলেবাস, প্রসপেক্টাস, প্রশ্নব্যাংক)</h2>
@@ -156,6 +174,7 @@
           <option value="syllabus">সিলেবাস</option>
           <option value="prospectus">প্রসপেক্টাস</option>
           <option value="question">প্রশ্নব্যাংক</option>
+          <option value="booklist">বুকলিস্ট</option>
           <option value="other">অন্যান্য</option>
         </select></div>
         <div class="full"><label>ফাইল (PDF বা ছবি, সর্বোচ্চ ১০ MB)</label><input type="file" id="d-file" accept="application/pdf,image/*"></div>
@@ -295,7 +314,7 @@ async function loadAll() {
   const s = await getSettings();
   document.querySelectorAll("[data-key]").forEach(el => el.value = s[el.dataset.key] || "");
   ["logo_url","banner_url","side_url"].forEach(k => { const p = $("prev-"+k); if (s[k]) { p.src = s[k]; p.style.display = "block"; } else p.style.display = "none"; });
-  loadNotices(); loadEvents(); loadGallery(); loadDocs(); loadPeople(); loadCondolences();
+  loadNotices(); loadEvents(); loadGallery(); loadDocs(); loadScholars(); loadPeople(); loadCondolences();
 }
 
 // ---------- ছবি (লোগো, ব্যানার, পাশের ছবি) ----------
@@ -361,8 +380,51 @@ async function loadGallery() {
   });
 }
 
+// ---------- বৃত্তিপ্রাপ্ত শিক্ষার্থী ----------
+$("sc-add").onclick = async () => {
+  const name = $("sc-name").value.trim();
+  const scholarship = $("sc-scholarship").value.trim();
+  const msg = $("sc-msg");
+  if (!name || !scholarship) return flash(msg, "নাম ও বৃত্তির নাম লিখুন।", false);
+  if (!$("sc-consent").checked) return flash(msg, "অভিভাবকের লিখিত সম্মতি ছাড়া প্রকাশ করা যাবে না।", false);
+  const file = $("sc-file").files[0];
+  try {
+    let photo_url = null;
+    if (file) photo_url = await uploadFile(file, "scholar");
+    const { error } = await sb.from("scholarship_recipients").insert({
+      name, class_name: $("sc-class").value.trim() || null, scholarship_name: scholarship,
+      provider: $("sc-provider").value, year: +$("sc-year").value || null, photo_url, consent: true
+    });
+    if (error) throw error;
+    ["sc-name","sc-class","sc-scholarship","sc-file"].forEach(id => $(id).value = "");
+    $("sc-consent").checked = false;
+    flash(msg, "যোগ হয়েছে।", true);
+    loadScholars();
+  } catch (e) { flash(msg, "যোগ করা যায়নি: " + e.message, false); }
+};
+async function loadScholars() {
+  const { data } = await sb.from("scholarship_recipients").select("*").order("created_at", { ascending: false });
+  $("sc-list").innerHTML = (data || []).map(r => `
+    <div class="item"><div><strong>${esc(r.name)}</strong> ${r.class_name ? "· " + esc(r.class_name) : ""}
+      <div class="note">${esc(r.scholarship_name)} · ${esc(r.provider)} ${r.year || ""} · ${r.status === "active" ? "প্রকাশিত" : "লুকানো"}</div></div>
+    <div><button data-sctoggle="${r.id}" data-next="${r.status === "active" ? "inactive" : "active"}">${r.status === "active" ? "লুকান" : "প্রকাশ"}</button>
+    <button class="danger" data-scdel="${r.id}" data-url="${esc(r.photo_url || "")}">মুছুন</button></div></div>`).join("")
+    || `<p class="note">কোনো বৃত্তিপ্রাপ্ত শিক্ষার্থী নেই।</p>`;
+  document.querySelectorAll("[data-sctoggle]").forEach(b => b.onclick = async () => {
+    await sb.from("scholarship_recipients").update({ status: b.dataset.next }).eq("id", b.dataset.sctoggle);
+    loadScholars();
+  });
+  document.querySelectorAll("[data-scdel]").forEach(b => b.onclick = async () => {
+    if (!confirm("এই তথ্য মুছবেন?")) return;
+    const path = b.dataset.url ? storagePath(b.dataset.url) : null;
+    if (path) await sb.storage.from(BUCKET).remove([path]);
+    await sb.from("scholarship_recipients").delete().eq("id", b.dataset.scdel);
+    loadScholars();
+  });
+}
+
 // ---------- ডাউনলোড (PDF/ছবি) ----------
-const DOC_LABEL = { routine:"রুটিন", syllabus:"সিলেবাস", prospectus:"প্রসপেক্টাস", question:"প্রশ্নব্যাংক", other:"অন্যান্য" };
+const DOC_LABEL = { routine:"রুটিন", syllabus:"সিলেবাস", prospectus:"প্রসপেক্টাস", question:"প্রশ্নব্যাংক", booklist:"বুকলিস্ট", other:"অন্যান্য" };
 $("d-add").onclick = async () => {
   const title = $("d-title").value.trim();
   const file = $("d-file").files[0];

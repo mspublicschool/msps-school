@@ -60,10 +60,10 @@
   #login .card { width:100%; max-width:360px; text-align:center; }
   #login input { text-align:center; font-size:18px; letter-spacing:4px; }
   #receipt { background:#fff; border:2px dashed #9ca3af; padding:16px; border-radius:8px; margin-top:12px; }
-  /* তাগিদ পত্র: এ৪ পাতায় ৪টি করে */
+  /* তাগিদ পত্র: এ৪ ল্যান্ডস্কেপে ২টি করে (বাম-ডান) */
   #tagid-print { display:none; }
-  .tg-page { width:210mm; height:297mm; box-sizing:border-box; padding:8mm; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:4mm; background:#fff; color:#000; page-break-after:always; }
-  .tg { border:1px dashed #777; box-sizing:border-box; padding:4mm; font-size:10pt; display:flex; flex-direction:column; overflow:hidden; }
+  .tg-page { width:297mm; height:210mm; box-sizing:border-box; padding:0; display:grid; grid-template-columns:148.5mm 148.5mm; background:#fff; color:#000; page:lp; page-break-after:always; }
+  .tg { border:1px dashed #777; box-sizing:border-box; padding:6mm 7mm; height:210mm; font-size:10pt; display:flex; flex-direction:column; overflow:hidden; }
   .tg .hd { text-align:center; line-height:1.3; }
   .tg .hd b { display:block; font-size:13pt; color:#1e2a78; }
   .tg .hd small { font-size:8.5pt; }
@@ -76,9 +76,10 @@
   .tg td.num, .tg th.num { text-align:right; }
   .tg tr.total td { font-weight:700; }
   .tg .note { font-size:8.5pt; margin-top:2mm; line-height:1.5; }
-  .tg .sign { margin-top:auto; text-align:right; font-size:9.5pt; }
+  .tg .sign { margin-top:auto; display:flex; justify-content:space-between; gap:6mm; font-size:9.5pt; }
   .tg .sign div { display:inline-block; border-top:1px solid #000; padding-top:1mm; min-width:30mm; text-align:center; }
   @media print {
+    @page lp { size:A4 landscape; margin:0; }
     body > *:not(#tagid-print) { display:none !important; }
     #tagid-print { display:block !important; }
     #tagid-print, #tagid-print * { visibility:visible !important; }
@@ -210,15 +211,11 @@
       <div class="grid">
         <div><label>শিক্ষার্থী</label><select id="c-student"></select></div>
         <div><label>তারিখ</label><input id="c-date" type="date"></div>
-        <div><label>ফির ধরন</label>
-          <select id="c-type">
-            <option value="মাসিক বেতন">মাসিক বেতন</option>
-            <option value="মাসিক পরীক্ষা">মাসিক পরীক্ষা</option>
-            <option value="সাময়িক পরীক্ষা">সাময়িক পরীক্ষা</option>
-            <option value="ভর্তি ও অন্যান্য">ভর্তি ও অন্যান্য</option>
-          </select>
-        </div>
-        <div><label>টাকা</label><input id="c-amount" type="number" min="0"></div>
+      </div>
+      <div style="overflow-x:auto"><table id="c-items"></table></div>
+      <div class="grid" style="margin-top:8px">
+        <div><label>কার সুপারিশে কম নেওয়া হয়েছে (মওকুফ হলে বাধ্যতামূলক)</label><input id="c-recommend"></div>
+        <div><label>মন্তব্য (ঐচ্ছিক)</label><input id="c-note" placeholder="যেমন: পারিবারিক অবস্থা বিবেচনায়"></div>
       </div>
       <p class="note" id="c-due-info"></p>
       <button class="primary" id="c-save">গ্রহণ করুন ও রসিদ দেখান</button>
@@ -304,7 +301,8 @@
       <div class="grid" style="margin-top:8px">
         <div><label>শিক্ষাবর্ষ</label><input id="ms-year" value="2026"></div>
       </div>
-      <button class="primary" id="ms-class-dl">এই শ্রেণির সব মার্কশিট ডাউনলোড</button>
+      <button class="primary" id="ms-class-print">এই শ্রেণির সব মার্কশিট প্রিন্ট</button>
+      <button class="secondary" id="ms-class-dl">এই শ্রেণির সব মার্কশিট ডাউনলোড</button>
       <p class="msg">ডাউনলোড করা ফাইল খুলে "Print → Save as PDF" করলে অভিভাবকের জন্য PDF হবে। প্রতিটি শিক্ষার্থীর জন্য আলাদা পাতা থাকবে।</p>
       <div style="overflow-x:auto"><table id="r-table"></table></div>
       <p class="note">
@@ -347,7 +345,28 @@
       </table>
       <p class="note">"ভাউচার তৈরি" করলে বেতনের ভাউচার প্রধান শিক্ষকের অনুমোদনের জন্য যাবে। অনুমোদন হলে তবেই হিসাবে ব্যয় হিসেবে যোগ হবে।</p>
     </div>
-  </section>
+    <!-- শিক্ষক লগইন অ্যাকাউন্ট (শুধু প্রধান শিক্ষক, Supabase) -->
+  <div class="card" id="ct-card" style="margin:16px 0">
+    <h2>শিক্ষকের লগইন অ্যাকাউন্ট</h2>
+    <p class="note" id="ct-state">শিক্ষক ট্যাব খুললে অবস্থা দেখাবে।</p>
+    <div id="ct-box" class="hidden">
+      <div class="grid">
+        <div><label>শিক্ষকের নাম</label><input id="ct-name"></div>
+        <div><label>লগইন আইডি (৩–২০ অক্ষর, ইংরেজি/সংখ্যা/_)</label><input id="ct-login" autocapitalize="off" spellcheck="false"></div>
+        <div><label>PIN (৮ সংখ্যা)</label><input id="ct-pin" inputmode="numeric" maxlength="8"></div>
+      </div>
+      <label>শ্রেণি (একাধিক বাছাই করা যাবে)</label>
+      <div id="ct-classes"></div>
+      <button class="primary" id="ct-create">অ্যাকাউন্ট তৈরি করুন</button>
+      <p class="msg" id="ct-msg"></p>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>নাম</th><th>আইডি</th><th>শ্রেণি</th><th>অবস্থা</th><th></th></tr></thead>
+        <tbody id="ct-list"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+</section>
 
   <!-- ভাউচার ও খরচ -->
   <section id="tab-vouchers" class="hidden">
@@ -391,10 +410,10 @@
     <div class="card">
       <h2>মাসিক বেতন</h2>
       <table>
-        <thead><tr><th>শ্রেণি</th><th class="num">২০২৬ (বর্তমান)</th><th class="num">২০২৭ (প্রস্তাবিত)</th></tr></thead>
+        <thead><tr><th>শ্রেণি</th><th class="num">২০২৬ (বর্তমান)</th></tr></thead>
         <tbody>
-          <tr><td>নার্সারি, স্ট্যান্ডার্ড, ওয়ান, টু</td><td class="num">২২০</td><td class="num">২৫০</td></tr>
-          <tr><td>থ্রি, ফোর, ফাইভ</td><td class="num">২৫০</td><td class="num">৩০০</td></tr>
+          <tr><td>নার্সারি, স্ট্যান্ডার্ড, ওয়ান, টু</td><td class="num">২২০</td></tr>
+          <tr><td>থ্রি, ফোর, ফাইভ</td><td class="num">২৫০</td></tr>
         </tbody>
       </table>
     </div>
@@ -536,11 +555,14 @@
 </main>
 </div>
 
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="photo-crop.js"></script>
 <script>
 // =====================================================
 // ধ্রুবক, ফি কাঠামো ও বিষয়
 // =====================================================
+const HEAD_NAME = "জনাব শিহাব উদ্দিন";  // প্রধান শিক্ষক — সব পত্র ও মার্কশিটের স্বাক্ষরে যাবে
 const CLASSES = ["নার্সারি","স্ট্যান্ডার্ড","ওয়ান","টু","থ্রি","ফোর","ফাইভ"];
 const KEY = "msps_v3";
 const EXAM_MONTHLY_COUNT = 6;
@@ -569,7 +591,7 @@ const EXAM_LABEL = { M1:"১ম মাসিক", M2:"২য় মাসিক"
 const TERM_MONTHLIES = { T1:["M1","M2"], T2:["M3","M4"], T3:["M5","M6"] };
 const TERMS = ["T1","T2","T3"];
 
-function monthlyRate(cls) { return ["থ্রি","ফোর","ফাইভ"].includes(cls) ? 300 : 250; }
+function monthlyRate(cls) { return ["থ্রি","ফোর","ফাইভ"].includes(cls) ? 250 : 220; }  // ২০২৬ (বর্তমান)
 // মাসিক পরীক্ষার ফি (প্রতিটি): নার্সারি–টু ৫০, থ্রি–ফাইভ ৬০
 function monthlyExamFee(cls) { return ["থ্রি","ফোর","ফাইভ"].includes(cls) ? 60 : 50; }
 function subjectsOf(cls) { return SUBJECTS[cls] || []; }
@@ -642,10 +664,43 @@ function calculate(s) {
   const otherTotal = admission + DIARY + SHOULDER;
   const grandTotal = monthlyPayable + examTotal + otherTotal;
   const paid = (s.payments || []).reduce((sum, p) => sum + p.amount, 0);
-  const due = Math.max(0, grandTotal - paid);
+  const waived = (s.payments || []).reduce((sum, p) => sum + Object.values(p.waived || {}).reduce((a, b) => a + (+b || 0), 0), 0);
+  const due = Math.max(0, grandTotal - paid - waived);
+  const rows = feeRows(s, { monthlyPayable, examMonthly, examTerm, lessonNotes, admitCards, admission });
   return { rate, freeFamily, poor: !!s.poor, monthlyFull, monthlyPayable, monthlyDiscount,
            examMonthly, examTerm, lessonNotes, admitCards, examTotal,
-           admission, otherTotal, grandTotal, paid, due };
+           admission, otherTotal, grandTotal, paid, waived, due, rows };
+}
+// ফি-আইটেম: প্রতিটির প্রদেয়, পরিশোধিত ও বকেয়া।
+// নতুন রসিদে প্রতি আইটেমের টাকা আলাদা লেখা থাকে (p.alloc)।
+// পুরনো রসিদে আইটেম লেখা নেই, তাই সেগুলো ক্রম অনুযায়ী (মাসিক বেতন থেকে) বণ্টন হয়।
+function feeRows(s, v) {
+  const list = [
+    { key: "monthly",   name: "মাসিক বেতন (বার্ষিক)", due: v.monthlyPayable },
+    { key: "mexam",     name: "মাসিক পরীক্ষা",        due: v.examMonthly },
+    { key: "term",      name: "সাময়িক পরীক্ষা",      due: v.examTerm },
+    { key: "lesson",    name: "লেসন নোট",             due: v.lessonNotes },
+    { key: "admitcard", name: "প্রবেশপত্র",           due: v.admitCards },
+    { key: "admission", name: "ভর্তি",                 due: v.admission },
+    { key: "other",     name: "ডায়েরি/বেজ/শোল্ডার",   due: DIARY + SHOULDER },
+  ].filter(x => x.due > 0).map(x => ({ ...x, paid: 0, waived: 0 }));
+  const byKey = Object.fromEntries(list.map(x => [x.key, x]));
+  let unallocated = 0;
+  (s.payments || []).forEach(p => {
+    Object.entries(p.waived || {}).forEach(([k, amt]) => { if (byKey[k]) byKey[k].waived += +amt || 0; });
+    if (p.alloc) {
+      Object.entries(p.alloc).forEach(([k, amt]) => { if (byKey[k]) byKey[k].paid += +amt || 0; });
+    } else {
+      unallocated += p.amount || 0;
+    }
+  });
+  list.forEach(x => { x.left = Math.max(0, x.due - x.paid - x.waived); });
+  for (const x of list) {                       // পুরনো (বণ্টন-বিহীন) টাকা ক্রম অনুযায়ী
+    if (unallocated <= 0) break;
+    const take = Math.min(x.left, unallocated);
+    x.paid += take; x.left -= take; unallocated -= take;
+  }
+  return list;
 }
 
 // =====================================================
@@ -1193,26 +1248,34 @@ function refreshStudentSelects() {
 }
 function updateCollectInfo() {
   const s = byId(document.getElementById("c-student").value);
-  if (!s) { document.getElementById("c-due-info").textContent = ""; return; }
+  const items = document.getElementById("c-items");
+  if (!s) { document.getElementById("c-due-info").textContent = ""; items.innerHTML = ""; return; }
   const c = calculate(s);
+  items.innerHTML = `<thead><tr><th>ফি</th><th class="num">প্রদেয়</th><th class="num">পরিশোধিত</th><th class="num">বকেয়া</th><th>এখন দিচ্ছেন</th><th>মওকুফ</th></tr></thead><tbody>` +
+    c.rows.map(r => `<tr><td>${r.name}</td><td class="num">${fmt(r.due)}</td><td class="num">${fmt(r.paid + r.waived)}</td><td class="num">${fmt(r.left)}</td>
+      <td><input type="number" min="0" inputmode="numeric" data-key="${r.key}" data-left="${r.left}" style="width:110px;margin:0"></td>
+      <td>${r.left > 0 ? `<input type="checkbox" data-waive="${r.key}" style="width:auto;margin:0">` : "-"}</td></tr>`).join("") +
+    `</tbody>`;
   document.getElementById("c-due-info").textContent =
-    `মোট বকেয়া: ${fmt(c.due)} টাকা (প্রদেয় ${fmt(c.grandTotal)}, পরিশোধিত ${fmt(c.paid)})`;
+    `মোট বকেয়া: ${fmt(c.due)} টাকা (প্রদেয় ${fmt(c.grandTotal)}, পরিশোধিত ${fmt(c.paid)}${c.waived ? `, মওকুফ ${fmt(c.waived)}` : ""})`;
 }
 function renderHistory() {
   const rows = [];
   state.students.forEach(s => (s.payments || []).forEach(p => rows.push({ ...p, name: s.name })));
   rows.sort((a, b) => b.no - a.no);
   document.getElementById("c-history").innerHTML = rows.length
-    ? rows.map(p => `<tr><td>${p.no}</td><td>${p.date}</td><td>${esc(p.name)}</td><td>${esc(p.type)}</td><td class="num">${fmt(p.amount)}</td></tr>`).join("")
+    ? rows.map(p => `<tr><td>${p.no}</td><td>${p.date}</td><td>${esc(p.name)}</td><td>${esc(p.type)}${p.note ? `<div class="note">মন্তব্য: ${esc(p.note)}</div>` : ""}${p.recommended_by ? `<div class="note">সুপারিশ: ${esc(p.recommended_by)}</div>` : ""}</td><td class="num">${fmt(p.amount)}</td></tr>`).join("")
     : `<tr><td colspan="5">এখনো কোনো পরিশোধ নেই</td></tr>`;
 }
 function showReceipt(s, p) {
   const c = calculate(s);
   const r = document.getElementById("receipt");
+  const itemLines = c.rows.filter(x => (p.alloc && p.alloc[x.key]) || (p.waived && p.waived[x.key]) || x.left > 0).map(x =>
+    `<tr><td>${x.name}</td><td class="num">${fmt((p.alloc && p.alloc[x.key]) || 0)}</td><td class="num">${fmt((p.waived && p.waived[x.key]) || 0)}</td><td class="num">${fmt(x.left)}</td></tr>`).join("");
   r.innerHTML = `
     <div style="text-align:center">
       <strong>এম এস পাবলিক স্কুল</strong><br>
-      <span class="note">ফি রসিদ · ২০২৭ শিক্ষাবর্ষ</span>
+      <span class="note">ফি রসিদ · ২০২৬ শিক্ষাবর্ষ</span>
     </div>
     <table style="margin-top:10px">
       <tr><td>রসিদ নম্বর</td><td class="num">${p.no}</td></tr>
@@ -1220,9 +1283,14 @@ function showReceipt(s, p) {
       <tr><td>শিক্ষার্থীর নাম</td><td class="num">${esc(s.name)}</td></tr>
       <tr><td>শ্রেণি</td><td class="num">${esc(s.cls)}</td></tr>
       <tr><td>ফির ধরন</td><td class="num">${esc(p.type)}</td></tr>
-      <tr><td><strong>পরিশোধিত</strong></td><td class="num"><strong>${fmt(p.amount)} টাকা</strong></td></tr>
-      <tr><td>অবশিষ্ট বকেয়া</td><td class="num">${fmt(c.due)} টাকা</td></tr>
     </table>
+    <table style="margin-top:8px">
+      <thead><tr><th>ফি</th><th class="num">এই রসিদে</th><th class="num">মওকুফ</th><th class="num">অবশিষ্ট বকেয়া</th></tr></thead>
+      <tbody>${itemLines}</tbody>
+      <tfoot><tr><td><strong>মোট পরিশোধিত</strong></td><td class="num"><strong>${fmt(p.amount)} টাকা</strong></td><td></td><td class="num">${fmt(c.due)} টাকা</td></tr></tfoot>
+    </table>
+    ${p.recommended_by ? `<p class="note" style="margin-top:8px">কার সুপারিশে: <b>${esc(p.recommended_by)}</b></p>` : ""}
+    ${p.note ? `<p class="note">মন্তব্য: ${esc(p.note)}</p>` : ""}
     <p class="note" style="margin-top:10px">প্রাপ্ত স্বাক্ষর: ____________________</p>`;
   r.classList.remove("hidden");
   document.getElementById("c-print").classList.remove("hidden");
@@ -1230,25 +1298,51 @@ function showReceipt(s, p) {
 document.getElementById("c-student").addEventListener("change", updateCollectInfo);
 document.getElementById("c-save").addEventListener("click", () => {
   const s = byId(document.getElementById("c-student").value);
-  const amount = Math.round(+document.getElementById("c-amount").value);
   const msg = document.getElementById("c-msg");
   if (!s) return showMsg(msg, "শিক্ষার্থী নির্বাচন করুন।", false);
-  if (!(amount > 0)) return showMsg(msg, "সঠিক টাকার পরিমাণ লিখুন।", false);
+  const alloc = {};
+  let total = 0, names = [];
   const c = calculate(s);
-  if (amount > c.due + 0.5) return showMsg(msg, `বকেয়ার চেয়ে বেশি (${fmt(c.due)} টাকা) নেওয়া যাবে না।`, false);
+  for (const inp of document.querySelectorAll("#c-items input[data-key]")) {
+    const v = Math.round(+inp.value || 0);
+    if (!(v > 0)) continue;
+    const left = +inp.dataset.left;
+    const row = c.rows.find(r => r.key === inp.dataset.key);
+    if (v > left + 0.5) return showMsg(msg, `"${row.name}" এর বকেয়া ${fmt(left)} টাকা, তার বেশি নেওয়া যাবে না।`, false);
+    alloc[inp.dataset.key] = v; total += v; names.push(row.name);
+  }
+  const waived = {};
+  let waivedNames = [];
+  for (const cb of document.querySelectorAll("#c-items input[data-waive]:checked")) {
+    const row = c.rows.find(r => r.key === cb.dataset.waive);
+    const left = row ? row.left - (alloc[cb.dataset.waive] || 0) : 0;
+    if (row && left > 0) { waived[row.key] = left; waivedNames.push(row.name); }
+  }
+  const recommend = document.getElementById("c-recommend").value.trim();
+  const note = document.getElementById("c-note").value.trim();
+  if (waivedNames.length && !recommend) return showMsg(msg, "মওকুফ করলে কার সুপারিশে কম নেওয়া হয়েছে তা লিখুন।", false);
+  if (!(total > 0) && !waivedNames.length) return showMsg(msg, "কমপক্ষে একটি ফির টাকা লিখুন বা মওকুফ বাছাই করুন।", false);
   const p = {
     no: state.receiptNo++,
     date: document.getElementById("c-date").value || todayISO(),
-    type: document.getElementById("c-type").value,
-    amount
+    type: names.concat(waivedNames.map(n => n + " (মওকুফ)")).join(", "),
+    amount: total,
+    alloc,
+    waived,
+    recommended_by: recommend,
+    note
   };
   s.payments = s.payments || [];
   s.payments.push(p);
   save();
   showMsg(msg, `রসিদ ${p.no} তৈরি হয়েছে।`, true);
-  document.getElementById("c-amount").value = "";
+  document.getElementById("c-note").value = "";
+  document.getElementById("c-recommend").value = "";
   showReceipt(s, p);
+  const keepId = String(s.id);
   refreshAll();
+  document.getElementById("c-student").value = keepId;
+  updateCollectInfo();
 });
 document.getElementById("c-print").addEventListener("click", () => window.print());
 
@@ -1283,7 +1377,7 @@ function letterHtml(s, date, deadline) {
       </tbody>
     </table>
     <div class="note">বিঃদ্রঃ প্রতি মাসের ${esc(deadline)} তারিখের মধ্যে সকল পাওনা পরিশোধ করে বিদ্যালয়ের কার্যক্রমে সহযোগিতা করবার জন্য বিনীত অনুরোধ রইল।</div>
-    <div class="sign"><div>শ্রেণি শিক্ষক</div></div>
+    <div class="sign"><div>শ্রেণি শিক্ষক</div><div>${HEAD_NAME}<br>প্রধান শিক্ষক</div></div>
   </div>`;
 }
 
@@ -1302,9 +1396,9 @@ document.getElementById("tg-print").addEventListener("click", () => {
   if (!list.length) { msg.textContent = "কোনো শিক্ষার্থী পাওয়া যায়নি।"; msg.style.color = "var(--bad)"; return; }
   msg.textContent = `${list.length} জনের পত্র তৈরি হচ্ছে...`; msg.style.color = "";
   const pages = [];
-  for (let i = 0; i < list.length; i += 4) {
-    const chunk = list.slice(i, i + 4).map(s => letterHtml(s, date, deadline));
-    while (chunk.length < 4) chunk.push(`<div></div>`);
+  for (let i = 0; i < list.length; i += 2) {
+    const chunk = list.slice(i, i + 2).map(s => letterHtml(s, date, deadline));
+    while (chunk.length < 2) chunk.push(`<div></div>`);
     pages.push(`<div class="tg-page">${chunk.join("")}</div>`);
   }
   document.getElementById("tagid-print").innerHTML = pages.join("");
@@ -1445,7 +1539,7 @@ function renderResults() {
         <td>${a.fails.length ? esc(a.fails.join("، ")) : "-"}</td>
         <td><span class="tag ${st.cls}">${st.text}</span></td>
         <td><input class="att" type="number" min="0" data-att="${s.id}" value="${state.attendance[s.id] ?? ""}"></td>
-        <td><button class="secondary" data-ms="${s.id}">মার্কশিট</button></td>
+        <td><button class="primary" data-msp="${s.id}">মার্কশিট প্রিন্ট</button> <button class="secondary" data-ms="${s.id}">ডাউনলোড</button></td>
       </tr>`;
     }).join("")}</tbody>`;
   table.querySelectorAll("[data-att]").forEach(inp => inp.addEventListener("change", () => {
@@ -1478,7 +1572,9 @@ body{font-family:"Noto Sans Bengali","Nirmala UI",sans-serif;color:#111;margin:0
 .ms .sign{display:flex;justify-content:space-between;margin-top:48px;font-size:13px}
 .ms .sign div{border-top:1px solid #333;padding-top:4px;min-width:160px;text-align:center}
 .ms .note{font-size:12px;color:#555;margin-top:10px}
-@media print{body{background:#fff}.ms{margin:0;page-break-after:always}@page{size:A4;margin:0}}
+.pg{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:16px}
+@page ms{size:A4 landscape;margin:0}
+@media print{body{background:#fff}.pg{display:grid;grid-template-columns:148.5mm 148.5mm;height:208mm;overflow:hidden;gap:0;margin:0;page:ms;page-break-after:always}.pg:last-child{page-break-after:auto}.ms{width:148.5mm;height:208mm;box-sizing:border-box;padding:6mm;overflow:hidden;margin:0;border-right:1px dashed #999}.ms .sign div{min-width:95px}}
 `;
 const bnDigits = t => String(t).replace(/[0-9]/g, d => "০১২৩৪৫৬৭৮৯"[d]);
 
@@ -1538,23 +1634,41 @@ function marksheetSheet(s, year) {
       <div>মায়ের নাম: <b>${esc(s.mother || "-")}</b></div>
     </div>
     ${body}
-    <div class="sign"><div>শ্রেণি শিক্ষক</div><div>প্রধান শিক্ষক</div><div>অভিভাবকের স্বাক্ষর</div></div>
+    <div class="sign"><div>শ্রেণি শিক্ষক</div><div>${HEAD_NAME}<br>প্রধান শিক্ষক</div><div>অভিভাবকের স্বাক্ষর</div></div>
     <p class="note">বিঃদ্রঃ মাসিক পরীক্ষার ১০% সাময়িক পরীক্ষার সাথে যোগ হয়। যে পরীক্ষা হয়নি তার নম্বর যোগ হয় না।</p>
   </div>`;
 }
 function showRankText(pos) { return pos > 0 ? bnDigits(pos) : "-"; }
 
+function marksheetPages(list, year) {
+  const out = [];
+  for (let i = 0; i < list.length; i += 2) out.push(`<div class="pg">${marksheetSheet(list[i], year)}${list[i + 1] ? marksheetSheet(list[i + 1], year) : "<div></div>"}</div>`);
+  return out.join("");
+}
 function marksheetDoc(list, year, title) {
   return `<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><style>${MS_CSS}</style></head><body>
-${list.map(s => marksheetSheet(s, year)).join("")}
+${marksheetPages(list, year)}
 </body></html>`;
+}
+// অ্যাপের ভেতরেই প্রিন্ট (ডাউনলোড ছাড়া)
+(function injectMsCss() { const st = document.createElement("style"); st.textContent = MS_CSS; document.head.appendChild(st); })();
+function printMarksheets(list, year, msgEl) {
+  if (!list.length) return showMsg(msgEl, "কোনো শিক্ষার্থী নেই।", false);
+  document.getElementById("tagid-print").innerHTML = marksheetPages(list, year);
+  showMsg(msgEl, `${list.length} জনের মার্কশিট প্রিন্টের জন্য প্রস্তুত।`, true);
+  setTimeout(() => window.print(), 150);
 }
 function downloadFile(name, text, mime) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([text], { type: mime }));
   a.download = name; document.body.appendChild(a); a.click(); a.remove();
 }
+document.getElementById("ms-class-print").addEventListener("click", () => {
+  const cls = document.getElementById("r-class").value || CLASSES[0];
+  const year = document.getElementById("ms-year").value.trim() || "2026";
+  printMarksheets(rankedClass(cls).map(x => x.s), year, document.getElementById("r-msg"));
+});
 document.getElementById("ms-class-dl").addEventListener("click", () => {
   const cls = document.getElementById("r-class").value || CLASSES[0];
   const year = document.getElementById("ms-year").value.trim() || "2026";
@@ -1564,6 +1678,13 @@ document.getElementById("ms-class-dl").addEventListener("click", () => {
   showMsg(document.getElementById("r-msg"), `${list.length} জনের মার্কশিট ডাউনলোড হয়েছে।`, true);
 });
 document.getElementById("r-table").addEventListener("click", e => {
+  const pb = e.target.closest("[data-msp]");
+  if (pb) {
+    const ps = byId(pb.dataset.msp);
+    const py = document.getElementById("ms-year").value.trim() || "2026";
+    if (ps) printMarksheets([ps], py, document.getElementById("r-msg"));
+    return;
+  }
   const btn = e.target.closest("[data-ms]");
   if (!btn) return;
   const s = byId(btn.dataset.ms);
@@ -1985,6 +2106,108 @@ state = load();
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
+
+// =====================================================
+// শিক্ষক লগইন অ্যাকাউন্ট (Supabase; শুধু প্রধান শিক্ষক)
+// login.html-এর একই সেশন ব্যবহার করে, তাই আলাদা লগইন লাগে না
+// =====================================================
+const ctSb = (window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } })
+  : null;
+let ctClasses = [];
+const ctMsg = (t, ok) => showMsg(document.getElementById("ct-msg"), t, ok);
+async function ctErrText(error, data) {
+  if (data && data.error) return data.error;
+  if (error && error.context && typeof error.context.json === "function") {
+    try { const j = await error.context.json(); if (j && j.error) return j.error; } catch (e) {}
+  }
+  return error ? error.message : "অজানা ত্রুটি";
+}
+async function ctIsHead() {
+  const { data: u } = await ctSb.auth.getUser();
+  if (!u || !u.user) return false;
+  const { data: r } = await ctSb.from("user_roles").select("role,status").eq("user_id", u.user.id).maybeSingle();
+  return !!r && r.role === "head" && r.status === "active";
+}
+async function loadCtAccounts() {
+  const st = document.getElementById("ct-state"), box = document.getElementById("ct-box");
+  if (!ctSb) { st.textContent = "সংযোগ সেটআপ হয়নি (config.js ও ইন্টারনেট যাচাই করুন)।"; box.classList.add("hidden"); return; }
+  try {
+    const { data: sess } = await ctSb.auth.getSession();
+    if (!sess || !sess.session) {
+      st.innerHTML = 'শিক্ষক অ্যাকাউন্ট তৈরি করতে আগে <a href="login.html">লগইন পেজে</a> প্রধান শিক্ষক হিসেবে প্রবেশ করুন।';
+      box.classList.add("hidden"); return;
+    }
+    if (!(await ctIsHead())) { st.textContent = "এই অংশ শুধু প্রধান শিক্ষক ব্যবহার করতে পারবেন।"; box.classList.add("hidden"); return; }
+    st.textContent = "";
+    box.classList.remove("hidden");
+    const { data: cls, error } = await ctSb.from("classes").select("id,name,sort_order").eq("status", "active").order("sort_order");
+    if (error) return ctMsg("শ্রেণি আনা যায়নি: " + error.message, false);
+    ctClasses = cls || [];
+    document.getElementById("ct-classes").innerHTML = ctClasses.map(c =>
+      `<label style="display:inline-flex;align-items:center;gap:4px;margin:4px 12px 4px 0;font-weight:400"><input type="checkbox" value="${c.id}" style="width:auto;margin:0">${esc(c.name)}</label>`).join("");
+    await renderCtList();
+  } catch (e) { st.textContent = "লোড করা যায়নি: " + e.message; }
+}
+async function renderCtList() {
+  const { data: rows, error } = await ctSb.from("user_roles").select("user_id,login_id,status,role").eq("role", "class_teacher").order("login_id");
+  if (error) return ctMsg("তালিকা আনা যায়নি: " + error.message, false);
+  const { data: tch } = await ctSb.from("teachers").select("id,user_id,name");
+  const { data: asg } = await ctSb.from("class_teacher_assignments").select("teacher_id,class_id");
+  const clsName = Object.fromEntries(ctClasses.map(c => [c.id, c.name]));
+  const tByUser = Object.fromEntries((tch || []).map(t => [t.user_id, t]));
+  const body = document.getElementById("ct-list");
+  body.innerHTML = (rows || []).length ? rows.map(r => {
+    const t = tByUser[r.user_id] || {};
+    const names = (asg || []).filter(a => a.teacher_id === t.id).map(a => clsName[a.class_id] || "").filter(Boolean).join(", ");
+    const active = r.status === "active";
+    return `<tr><td>${esc(t.name || "-")}</td><td>${esc(r.login_id || "-")}</td><td>${esc(names || "-")}</td>
+      <td>${active ? "সক্রিয়" : "নিষ্ক্রিয়"}</td>
+      <td><button class="small" data-ctpin="${r.user_id}">PIN রিসেট</button>
+      <button class="small" data-ctact="${r.user_id}" data-next="${active ? "inactive" : "active"}">${active ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}</button></td></tr>`;
+  }).join("") : `<tr><td colspan="5">কোনো শিক্ষক অ্যাকাউন্ট নেই</td></tr>`;
+  body.querySelectorAll("[data-ctpin]").forEach(b => b.addEventListener("click", () => ctResetPin(b.dataset.ctpin)));
+  body.querySelectorAll("[data-ctact]").forEach(b => b.addEventListener("click", () => ctSetStatus(b.dataset.ctact, b.dataset.next)));
+}
+document.getElementById("ct-create").addEventListener("click", async () => {
+  const name = document.getElementById("ct-name").value.trim();
+  const login = document.getElementById("ct-login").value.trim();
+  const pin = document.getElementById("ct-pin").value.trim();
+  const classIds = [...document.querySelectorAll("#ct-classes input:checked")].map(i => i.value);
+  if (!name) return ctMsg("শিক্ষকের নাম লিখুন।", false);
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(login)) return ctMsg("লগইন আইডি ৩–২০ অক্ষর (ইংরেজি, সংখ্যা, _) হতে হবে।", false);
+  if (!/^[0-9]{8}$/.test(pin)) return ctMsg("PIN অবশ্যই ৮ সংখ্যার হতে হবে।", false);
+  if (!classIds.length) return ctMsg("অন্তত একটি শ্রেণি বাছাই করুন।", false);
+  const btn = document.getElementById("ct-create");
+  btn.disabled = true; btn.textContent = "তৈরি হচ্ছে…";
+  try {
+    const { data, error } = await ctSb.functions.invoke("create-user", { body: { action: "create", login_id: login, pin, role: "class_teacher" } });
+    if (error || !data || !data.ok) return ctMsg("অ্যাকাউন্ট তৈরি হয়নি: " + await ctErrText(error, data), false);
+    const { data: t, error: tErr } = await ctSb.from("teachers").insert({ user_id: data.user_id, name }).select("id").single();
+    if (tErr) return ctMsg("লগইন তৈরি হয়েছে, কিন্তু শিক্ষকের তথ্য যোগ হয়নি: " + tErr.message, false);
+    const { error: aErr } = await ctSb.from("class_teacher_assignments").insert(classIds.map(c => ({ teacher_id: t.id, class_id: c })));
+    if (aErr) return ctMsg("শিক্ষক যোগ হয়েছে, কিন্তু শ্রেণি বরাদ্দ হয়নি: " + aErr.message, false);
+    ctMsg(`"${name}" এর লগইন তৈরি হয়েছে। আইডি: ${login}`, true);
+    ["ct-name", "ct-login", "ct-pin"].forEach(id => document.getElementById(id).value = "");
+    document.querySelectorAll("#ct-classes input").forEach(i => i.checked = false);
+    await renderCtList();
+  } finally { btn.disabled = false; btn.textContent = "অ্যাকাউন্ট তৈরি করুন"; }
+});
+async function ctResetPin(uid) {
+  const pin = prompt("নতুন ৮ সংখ্যার PIN লিখুন");
+  if (pin === null) return;
+  if (!/^[0-9]{8}$/.test(pin)) return ctMsg("PIN অবশ্যই ৮ সংখ্যার হতে হবে।", false);
+  const { data, error } = await ctSb.functions.invoke("create-user", { body: { action: "reset_pin", user_id: uid, pin } });
+  if (error || !data || !data.ok) return ctMsg("PIN বদলানো যায়নি: " + await ctErrText(error, data), false);
+  ctMsg("PIN বদলানো হয়েছে।", true);
+}
+async function ctSetStatus(uid, next) {
+  if (!confirm(next === "inactive" ? "এই শিক্ষকের লগইন বন্ধ করবেন?" : "এই শিক্ষকের লগইন চালু করবেন?")) return;
+  const { error } = await ctSb.from("user_roles").update({ status: next }).eq("user_id", uid);
+  if (error) return ctMsg("হালনাগাদ হয়নি: " + error.message, false);
+  await renderCtList();
+}
+document.querySelector('nav button[data-tab="teachers"]').addEventListener("click", loadCtAccounts);
 </script>
 <div id="tagid-print"></div>
 </body>
