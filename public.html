@@ -227,17 +227,21 @@
   .condol .cn img{width:44px;height:44px;border-radius:50%;object-fit:cover}
   .condol .cm{white-space:pre-line;font-size:16px;line-height:1.7}
   /* বৃত্তিপ্রাপ্ত স্লাইডশো */
-  .slides{position:relative;min-height:220px}
-  .slide{display:none;text-align:center}
-  .slide.on{display:block}
-  .slide img{width:140px;height:140px;object-fit:cover;border-radius:50%;border:3px solid var(--brand-soft)}
-  .slide .ph{width:140px;height:140px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:inline-flex;align-items:center;justify-content:center;font-size:44px;font-weight:700}
-  .slide h3{margin:10px 0 2px;font-size:18px}
-  .slide .sub{color:var(--muted);font-size:14px}
-  .slide-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px}
-  .slide-nav button{border:1px solid var(--line);background:#fff;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer;color:var(--brand)}
-  .slide-nav .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line);margin:0 3px;cursor:pointer;vertical-align:middle}
-  .slide-nav .dot.on{background:var(--brand)}
+  .slides{position:relative;max-width:560px;margin:6px auto 0;min-height:260px}
+  .slide{display:none;flex-direction:column;align-items:center;text-align:center;animation:scFade .6s ease}
+  .slide.on{display:flex}
+  @keyframes scFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .sc-pic{width:200px;height:200px;border-radius:50%;padding:6px;background:conic-gradient(var(--brand),#e11d48,#f59e0b,var(--brand));box-shadow:0 10px 28px rgba(20,29,90,.22);box-sizing:border-box}
+  .sc-pic img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;border:4px solid #fff;box-sizing:border-box}
+  .sc-pic .ph{width:100%;height:100%;border-radius:50%;border:4px solid #fff;box-sizing:border-box;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:700}
+  .slide h3{margin:16px 0 6px;font-size:21px;color:var(--fg)}
+  .slide .sc-tag{display:inline-block;background:var(--brand-soft);color:var(--brand);font-weight:600;font-size:14px;padding:4px 14px;border-radius:999px;margin-top:4px}
+  .slide .sub{color:var(--muted);font-size:14px;margin-top:6px}
+  .slide-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px}
+  .slide-nav button{border:1px solid var(--line);background:#fff;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;color:var(--brand);box-shadow:0 2px 6px rgba(0,0,0,.06)}
+  .slide-nav .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--line);margin:0 4px;cursor:pointer;vertical-align:middle;transition:all .25s}
+  .slide-nav .dot.on{background:var(--brand);width:24px;border-radius:6px}
+  @media (max-width:480px){.sc-pic{width:170px;height:170px}.slide h3{font-size:19px}}
 </style>
 </head>
 <body>
@@ -526,10 +530,10 @@
       const slidesEl = document.getElementById("sc-slides");
       slidesEl.innerHTML = scholars.map(r => `
         <div class="slide">
-          ${r.photo_url ? `<img src="${esc(r.photo_url)}" alt="${esc(r.name)}" loading="lazy">` : `<span class="ph">${esc((r.name || "?").charAt(0))}</span>`}
+          <div class="sc-pic">${r.photo_url ? `<img src="${esc(r.photo_url)}" alt="${esc(r.name)}" loading="lazy">` : `<span class="ph">${esc((r.name || "?").charAt(0))}</span>`}</div>
           <h3>${esc(r.name)}</h3>
-          <div class="sub">${r.class_name ? esc(r.class_name) + " · " : ""}${esc(r.scholarship_name)}</div>
-          <div class="sub">${esc(r.provider)}${r.year ? " · " + r.year : ""}</div>
+          <span class="sc-tag">${esc(r.scholarship_name)}</span>
+          <div class="sub">${r.class_name ? esc(r.class_name) + " · " : ""}${esc(r.provider)}${r.year ? " · " + r.year : ""}</div>
         </div>`).join("");
       let idx = 0, timer = null;
       const slides = [...slidesEl.querySelectorAll(".slide")];
