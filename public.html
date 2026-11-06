@@ -228,19 +228,21 @@
   .condol .cm{white-space:pre-line;font-size:16px;line-height:1.7}
   /* বৃত্তিপ্রাপ্ত স্লাইডশো */
   .slides{position:relative;max-width:560px;margin:6px auto 0;min-height:260px}
-  .slide{display:none;flex-direction:column;align-items:center;text-align:center;animation:scFade .6s ease}
+  .slide{display:none;flex-direction:column;align-items:center;text-align:center;animation:scFade .6s ease;
+    background:linear-gradient(145deg,#0d1442 0%,#141d5a 38%,#1e2a78 72%,#2c3a9a 100%);color:#fff;border-radius:20px;padding:28px 20px 24px;box-shadow:0 14px 34px rgba(13,20,66,.35);position:relative;overflow:hidden}
+  .slide::before{content:"";position:absolute;inset:-40% -20% auto auto;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(245,180,0,.22),transparent 70%);pointer-events:none}
   .slide.on{display:flex}
   @keyframes scFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  .sc-pic{width:200px;height:200px;border-radius:50%;padding:6px;background:conic-gradient(var(--brand),#e11d48,#f59e0b,var(--brand));box-shadow:0 10px 28px rgba(20,29,90,.22);box-sizing:border-box}
+  .sc-pic{width:200px;height:200px;border-radius:50%;padding:6px;background:conic-gradient(#f5b400,#ffe08a,#f5b400,#ffd166,#f5b400);box-shadow:0 10px 28px rgba(0,0,0,.35);box-sizing:border-box}
   .sc-pic img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;border:4px solid #fff;box-sizing:border-box}
-  .sc-pic .ph{width:100%;height:100%;border-radius:50%;border:4px solid #fff;box-sizing:border-box;background:var(--brand-soft);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:700}
-  .slide h3{margin:16px 0 6px;font-size:21px;color:var(--fg)}
-  .slide .sc-tag{display:inline-block;background:var(--brand-soft);color:var(--brand);font-weight:600;font-size:14px;padding:4px 14px;border-radius:999px;margin-top:4px}
-  .slide .sub{color:var(--muted);font-size:14px;margin-top:6px}
+  .sc-pic .ph{width:100%;height:100%;border-radius:50%;border:4px solid #fff;box-sizing:border-box;background:linear-gradient(135deg,#2c3a9a,#141d5a);color:#ffe08a;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:700}
+  .slide h3{margin:16px 0 6px;font-size:22px;color:#fff}
+  .slide .sc-tag{display:inline-block;background:linear-gradient(90deg,#f5b400,#ffd166);color:#141d5a;font-weight:700;font-size:14px;padding:5px 16px;border-radius:999px;margin-top:4px;box-shadow:0 4px 12px rgba(245,180,0,.35)}
+  .slide .sub{color:rgba(255,255,255,.82);font-size:14px;margin-top:8px}
   .slide-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px}
   .slide-nav button{border:1px solid var(--line);background:#fff;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;color:var(--brand);box-shadow:0 2px 6px rgba(0,0,0,.06)}
   .slide-nav .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--line);margin:0 4px;cursor:pointer;vertical-align:middle;transition:all .25s}
-  .slide-nav .dot.on{background:var(--brand);width:24px;border-radius:6px}
+  .slide-nav .dot.on{background:linear-gradient(90deg,#141d5a,#2c3a9a);width:24px;border-radius:6px}
   @media (max-width:480px){.sc-pic{width:170px;height:170px}.slide h3{font-size:19px}}
 </style>
 </head>
