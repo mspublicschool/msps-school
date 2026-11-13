@@ -2209,6 +2209,27 @@ async function ctSetStatus(uid, next) {
   await renderCtList();
 }
 document.querySelector('nav button[data-tab="teachers"]').addEventListener("click", loadCtAccounts);
+
+// =====================================================
+// সহজ প্রবেশ: লগইন পেজে (login.html) সফল লগইন থাকলে PIN ছাড়াই ঢুকবে
+// (প্রধান শিক্ষক বা শ্রেণি শিক্ষক এবং অ্যাকাউন্ট সক্রিয় থাকলে)
+// PIN ফর্ম শুধু অফলাইন বা সেশন না থাকলে দেখাবে।
+// =====================================================
+async function autoEnterFromSession() {
+  if (!ctSb) return false;
+  try {
+    const { data: sess } = await ctSb.auth.getSession();
+    if (!sess || !sess.session) return false;
+    const { data: r } = await ctSb.from("user_roles").select("role,status").eq("user_id", sess.session.user.id).maybeSingle();
+    return !!r && r.status === "active" && (r.role === "head" || r.role === "class_teacher");
+  } catch (e) { return false; }
+}
+autoEnterFromSession().then(ok => {
+  if (!ok) return;
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  startApp();
+});
 </script>
 <div id="tagid-print"></div>
 </body>
