@@ -352,15 +352,18 @@
     <div id="ct-box" class="hidden">
       <div class="grid">
         <div><label>শিক্ষকের নাম</label><input id="ct-name"></div>
-        <div><label>লগইন আইডি (৩–২০ অক্ষর, ইংরেজি/সংখ্যা/_)</label><input id="ct-login" autocapitalize="off" spellcheck="false"></div>
-        <div><label>PIN (৮ সংখ্যা)</label><input id="ct-pin" inputmode="numeric" maxlength="8"></div>
+        <div><label>শিক্ষকের ইমেইল</label><input id="ct-email" type="email" autocapitalize="off" spellcheck="false" placeholder="name@gmail.com"></div>
+        <div><label>প্রাথমিক পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)</label><input id="ct-pw" type="text" autocapitalize="off" spellcheck="false" maxlength="72"></div>
       </div>
       <label>শ্রেণি (একাধিক বাছাই করা যাবে)</label>
       <div id="ct-classes"></div>
       <button class="primary" id="ct-create">অ্যাকাউন্ট তৈরি করুন</button>
       <p class="msg" id="ct-msg"></p>
+      <h3 style="margin-top:18px">আমার (প্রধান শিক্ষকের) ইমেইল</h3>
+      <p class="note">পাসওয়ার্ড ভুলে গেলে এই ইমেইলে রিসেট লিংক যাবে। এখনো ইমেইল না থাকলে এখানে যুক্ত করুন।</p>
+      <div class="row"><input id="ct-self-email" type="email" autocapitalize="off" spellcheck="false" placeholder="name@gmail.com" style="flex:1"><button id="ct-self-email-btn" style="width:auto">যুক্ত করুন</button></div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>নাম</th><th>আইডি</th><th>শ্রেণি</th><th>অবস্থা</th><th></th></tr></thead>
+        <thead><tr><th>নাম</th><th>ইমেইল / আইডি</th><th>শ্রেণি</th><th>অবস্থা</th><th></th></tr></thead>
         <tbody id="ct-list"></tbody>
       </table></div>
     </div>
@@ -2164,7 +2167,7 @@ async function renderCtList() {
     const active = r.status === "active";
     return `<tr><td>${esc(t.name || "-")}</td><td>${esc(r.login_id || "-")}</td><td>${esc(names || "-")}</td>
       <td>${active ? "সক্রিয়" : "নিষ্ক্রিয়"}</td>
-      <td><button class="small" data-ctpin="${r.user_id}">PIN রিসেট</button>
+      <td><button class="small" data-ctpin="${r.user_id}">পাসওয়ার্ড রিসেট</button>
       <button class="small" data-ctact="${r.user_id}" data-next="${active ? "inactive" : "active"}">${active ? "নিষ্ক্রিয় করুন" : "সক্রিয় করুন"}</button></td></tr>`;
   }).join("") : `<tr><td colspan="5">কোনো শিক্ষক অ্যাকাউন্ট নেই</td></tr>`;
   body.querySelectorAll("[data-ctpin]").forEach(b => b.addEventListener("click", () => ctResetPin(b.dataset.ctpin)));
@@ -2172,36 +2175,47 @@ async function renderCtList() {
 }
 document.getElementById("ct-create").addEventListener("click", async () => {
   const name = document.getElementById("ct-name").value.trim();
-  const login = document.getElementById("ct-login").value.trim();
-  const pin = document.getElementById("ct-pin").value.trim();
+  const email = document.getElementById("ct-email").value.trim().toLowerCase();
+  const pw = document.getElementById("ct-pw").value;
   const classIds = [...document.querySelectorAll("#ct-classes input:checked")].map(i => i.value);
   if (!name) return ctMsg("শিক্ষকের নাম লিখুন।", false);
-  if (!/^[a-zA-Z0-9_]{3,20}$/.test(login)) return ctMsg("লগইন আইডি ৩–২০ অক্ষর (ইংরেজি, সংখ্যা, _) হতে হবে।", false);
-  if (!/^[0-9]{8}$/.test(pin)) return ctMsg("PIN অবশ্যই ৮ সংখ্যার হতে হবে।", false);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return ctMsg("সঠিক ইমেইল লিখুন।", false);
+  if (pw.length < 8) return ctMsg("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
   if (!classIds.length) return ctMsg("অন্তত একটি শ্রেণি বাছাই করুন।", false);
   const btn = document.getElementById("ct-create");
   btn.disabled = true; btn.textContent = "তৈরি হচ্ছে…";
   try {
-    const { data, error } = await ctSb.functions.invoke(CT_FN, { body: { action: "create", login_id: login, pin, role: "class_teacher" } });
+    const { data, error } = await ctSb.functions.invoke(CT_FN, { body: { action: "create", email, password: pw, role: "class_teacher" } });
     if (error || !data || !data.ok) return ctMsg("অ্যাকাউন্ট তৈরি হয়নি: " + await ctErrText(error, data), false);
     const { data: t, error: tErr } = await ctSb.from("teachers").insert({ user_id: data.user_id, name }).select("id").single();
     if (tErr) return ctMsg("লগইন তৈরি হয়েছে, কিন্তু শিক্ষকের তথ্য যোগ হয়নি: " + tErr.message, false);
     const { error: aErr } = await ctSb.from("class_teacher_assignments").insert(classIds.map(c => ({ teacher_id: t.id, class_id: c })));
     if (aErr) return ctMsg("শিক্ষক যোগ হয়েছে, কিন্তু শ্রেণি বরাদ্দ হয়নি: " + aErr.message, false);
-    ctMsg(`"${name}" এর লগইন তৈরি হয়েছে। আইডি: ${login}`, true);
-    ["ct-name", "ct-login", "ct-pin"].forEach(id => document.getElementById(id).value = "");
+    ctMsg(`"${name}" এর লগইন তৈরি হয়েছে। ইমেইল: ${email}। শিক্ষককে প্রাথমিক পাসওয়ার্ড জানিয়ে দিন।`, true);
+    ["ct-name", "ct-email", "ct-pw"].forEach(id => document.getElementById(id).value = "");
     document.querySelectorAll("#ct-classes input").forEach(i => i.checked = false);
     await renderCtList();
   } finally { btn.disabled = false; btn.textContent = "অ্যাকাউন্ট তৈরি করুন"; }
 });
 async function ctResetPin(uid) {
-  const pin = prompt("নতুন ৮ সংখ্যার PIN লিখুন");
-  if (pin === null) return;
-  if (!/^[0-9]{8}$/.test(pin)) return ctMsg("PIN অবশ্যই ৮ সংখ্যার হতে হবে।", false);
-  const { data, error } = await ctSb.functions.invoke(CT_FN, { body: { action: "reset_pin", user_id: uid, pin } });
-  if (error || !data || !data.ok) return ctMsg("PIN বদলানো যায়নি: " + await ctErrText(error, data), false);
-  ctMsg("PIN বদলানো হয়েছে।", true);
+  const pw = prompt("নতুন পাসওয়ার্ড লিখুন (কমপক্ষে ৮ অক্ষর)");
+  if (pw === null) return;
+  if (pw.length < 8) return ctMsg("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
+  const { data, error } = await ctSb.functions.invoke(CT_FN, { body: { action: "reset_password", user_id: uid, password: pw } });
+  if (error || !data || !data.ok) return ctMsg("পাসওয়ার্ড বদলানো যায়নি: " + await ctErrText(error, data), false);
+  ctMsg("পাসওয়ার্ড বদলানো হয়েছে।", true);
 }
+document.getElementById("ct-self-email-btn").addEventListener("click", async () => {
+  const email = document.getElementById("ct-self-email").value.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return ctMsg("সঠিক ইমেইল লিখুন।", false);
+  const { data: u } = await ctSb.auth.getUser();
+  if (!u || !u.user) return ctMsg("আবার লগইন করুন।", false);
+  const { data, error } = await ctSb.functions.invoke(CT_FN, { body: { action: "set_email", user_id: u.user.id, email } });
+  if (error || !data || !data.ok) return ctMsg("ইমেইল যুক্ত হয়নি: " + await ctErrText(error, data), false);
+  document.getElementById("ct-self-email").value = "";
+  ctMsg("আপনার ইমেইল যুক্ত হয়েছে। এখন থেকে এই ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন।", true);
+  await renderCtList();
+});
 async function ctSetStatus(uid, next) {
   if (!confirm(next === "inactive" ? "এই শিক্ষকের লগইন বন্ধ করবেন?" : "এই শিক্ষকের লগইন চালু করবেন?")) return;
   const { error } = await ctSb.from("user_roles").update({ status: next }).eq("user_id", uid);

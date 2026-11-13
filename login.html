@@ -52,12 +52,12 @@
   <!-- লগইন ফর্ম -->
   <section class="card view show" id="v-login">
     <form id="login-form" autocomplete="on" novalidate>
-      <label for="login-id">লগইন আইডি</label>
-      <input id="login-id" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="আইডি বা অভিভাবকের মোবাইল" required>
-      <div class="hint">কর্মীর আইডি বা অভিভাবকের মোবাইল নম্বর (০১… দিয়ে শুরু, ১১ সংখ্যা)</div>
+      <label for="login-id">ইমেইল</label>
+      <input id="login-id" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="name@gmail.com" required>
+      <div class="hint">কর্মী: ইমেইল ও পাসওয়ার্ড। অভিভাবক: মোবাইল নম্বর (০১… দিয়ে শুরু, ১১ সংখ্যা) ও ৮ সংখ্যার PIN।</div>
 
-      <label for="login-pin">PIN (৮ সংখ্যা)</label>
-      <input id="login-pin" name="password" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="••••••••" required>
+      <label for="login-pin">পাসওয়ার্ড বা PIN</label>
+      <input id="login-pin" name="password" type="password" autocomplete="current-password" maxlength="72" placeholder="কমপক্ষে ৮ অক্ষর" required>
 
       <button class="primary" type="submit" id="login-btn">প্রবেশ করুন</button>
       <div class="msg" id="login-msg" role="alert"></div>
@@ -72,14 +72,14 @@
     <a id="go-app" href="index.html" class="btnlink hidden">ম্যানেজমেন্ট অ্যাপ খুলুন</a>
 
     <div class="sec">
-      <h2>PIN বদলান</h2>
-      <label for="cur-pin">বর্তমান PIN</label>
-      <input id="cur-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password">
-      <label for="new-pin">নতুন PIN (৮ সংখ্যা)</label>
-      <input id="new-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
-      <label for="new-pin2">নতুন PIN আবার লিখুন</label>
-      <input id="new-pin2" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password">
-      <button type="button" id="pin-change-btn">PIN বদলান</button>
+      <h2>পাসওয়ার্ড বদলান</h2>
+      <label for="cur-pin">বর্তমান পাসওয়ার্ড</label>
+      <input id="cur-pin" type="password" maxlength="72" autocomplete="current-password">
+      <label for="new-pin">নতুন পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)</label>
+      <input id="new-pin" type="password" maxlength="72" autocomplete="new-password">
+      <label for="new-pin2">নতুন পাসওয়ার্ড আবার লিখুন</label>
+      <input id="new-pin2" type="password" maxlength="72" autocomplete="new-password">
+      <button type="button" id="pin-change-btn">পাসওয়ার্ড বদলান</button>
       <div class="msg" id="pin-msg" role="status"></div>
     </div>
 
@@ -117,15 +117,11 @@
   // আইডি → Supabase ইমেইল। ব্যবহারকারী ইমেইল দেখবেন না।
   function toEmail(raw) {
     const id = String(raw || "").trim();
-    if (/^0?1[0-9]{9}$/.test(id)) return "880" + id.replace(/^0/, "") + "@" + EMAIL_DOMAIN;  // মোবাইল → 880… অভিভাবক আইডি
-    return id.toLowerCase() + "@" + EMAIL_DOMAIN;
+    if (id.includes("@")) return id.toLowerCase();                                   // ইমেইল (কর্মী)
+    if (/^0?1[0-9]{9}$/.test(id)) return "880" + id.replace(/^0/, "") + "@" + EMAIL_DOMAIN;  // মোবাইল → 880… অভিভাবক
+    return id.toLowerCase() + "@" + EMAIL_DOMAIN;                                     // পুরনো আইডি (যেমন head01)
   }
-  const validPin = (p) => /^[0-9]{8}$/.test(p);
-
-  // ইনপুট: শুধু সংখ্যা রাখা
-  ["login-pin", "cur-pin", "new-pin", "new-pin2"].forEach((id) => {
-    $(id).addEventListener("input", (e) => { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 8); });
-  });
+  const validPwd = (p) => typeof p === "string" && p.length >= 8 && p.length <= 72;
 
   // ভূমিকা অনুযায়ী দেখানো
   async function showHome(user) {
@@ -155,8 +151,8 @@
     clearMsg($("login-msg"));
     const idRaw = $("login-id").value.trim();
     const pin = $("login-pin").value;
-    if (!idRaw) return showMsg($("login-msg"), "লগইন আইডি লিখুন।", false);
-    if (!validPin(pin)) return showMsg($("login-msg"), "PIN অবশ্যই ৮ সংখ্যার হতে হবে।", false);
+    if (!idRaw) return showMsg($("login-msg"), "ইমেইল বা মোবাইল নম্বর লিখুন।", false);
+    if (!validPwd(pin)) return showMsg($("login-msg"), "পাসওয়ার্ড বা PIN কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
 
     const btn = $("login-btn");
     btn.disabled = true; btn.textContent = "যাচাই হচ্ছে…";
@@ -166,7 +162,7 @@
 
     if (error || !data?.user) {
       // কোন অংশ ভুল, তা না জানিয়ে সাধারণ বার্তা (আইডি গোপন রাখতে)
-      return showMsg($("login-msg"), "আইডি বা PIN সঠিক নয়। আবার চেষ্টা করুন।", false);
+      return showMsg($("login-msg"), "ইমেইল/মোবাইল বা পাসওয়ার্ড সঠিক নয়। আবার চেষ্টা করুন।", false);
     }
     await showHome(data.user);
   });
@@ -175,20 +171,20 @@
   $("pin-change-btn").addEventListener("click", async () => {
     clearMsg($("pin-msg"));
     const cur = $("cur-pin").value, n1 = $("new-pin").value, n2 = $("new-pin2").value;
-    if (!validPin(cur)) return showMsg($("pin-msg"), "বর্তমান PIN ৮ সংখ্যার হতে হবে।", false);
-    if (!validPin(n1)) return showMsg($("pin-msg"), "নতুন PIN ৮ সংখ্যার হতে হবে।", false);
-    if (n1 !== n2) return showMsg($("pin-msg"), "নতুন PIN দুবার একই হতে হবে।", false);
-    if (n1 === cur) return showMsg($("pin-msg"), "নতুন PIN আগেরটির চেয়ে আলাদা হতে হবে।", false);
+    if (!validPwd(cur)) return showMsg($("pin-msg"), "বর্তমান পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
+    if (!validPwd(n1)) return showMsg($("pin-msg"), "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
+    if (n1 !== n2) return showMsg($("pin-msg"), "নতুন পাসওয়ার্ড দুবার একই হতে হবে।", false);
+    if (n1 === cur) return showMsg($("pin-msg"), "নতুন পাসওয়ার্ড আগেরটির চেয়ে আলাদা হতে হবে।", false);
 
     const { data: me } = await sb.auth.getUser();
     if (!me?.user) return showMsg($("pin-msg"), "আবার লগইন করুন।", false);
     const check = await sb.auth.signInWithPassword({ email: me.user.email, password: cur });
-    if (check.error) return showMsg($("pin-msg"), "বর্তমান PIN সঠিক নয়।", false);
+    if (check.error) return showMsg($("pin-msg"), "বর্তমান পাসওয়ার্ড সঠিক নয়।", false);
 
     const { error } = await sb.auth.updateUser({ password: n1 });
     ["cur-pin", "new-pin", "new-pin2"].forEach((id) => { $(id).value = ""; });
-    if (error) return showMsg($("pin-msg"), "PIN বদলানো যায়নি: " + error.message, false);
-    showMsg($("pin-msg"), "PIN বদলানো হয়েছে।", true);
+    if (error) return showMsg($("pin-msg"), "পাসওয়ার্ড বদলানো যায়নি: " + error.message, false);
+    showMsg($("pin-msg"), "পাসওয়ার্ড বদলানো হয়েছে।", true);
   });
 
   $("logout-btn").addEventListener("click", async () => {
