@@ -54,10 +54,10 @@
     <form id="login-form" autocomplete="on" novalidate>
       <label for="login-id">ইমেইল</label>
       <input id="login-id" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="name@gmail.com" required>
-      <div class="hint">কর্মী: ইমেইল ও পাসওয়ার্ড। অভিভাবক: মোবাইল নম্বর (০১… দিয়ে শুরু, ১১ সংখ্যা) ও ৮ সংখ্যার PIN।</div>
+      <div class="hint">কর্মী: ইমেইল ও পাসওয়ার্ড। অভিভাবক: মোবাইল নম্বর (০১… দিয়ে শুরু, ১১ সংখ্যা) ও PIN (কমপক্ষে ৬ সংখ্যা)।</div>
 
       <label for="login-pin">পাসওয়ার্ড বা PIN</label>
-      <input id="login-pin" name="password" type="password" autocomplete="current-password" maxlength="72" placeholder="কমপক্ষে ৮ অক্ষর" required>
+      <input id="login-pin" name="password" type="password" autocomplete="current-password" maxlength="72" placeholder="কমপক্ষে ৬ অক্ষর বা সংখ্যা" required>
 
       <button class="primary" type="submit" id="login-btn">প্রবেশ করুন</button>
       <div class="msg" id="login-msg" role="alert"></div>
@@ -75,7 +75,7 @@
       <h2>পাসওয়ার্ড বদলান</h2>
       <label for="cur-pin">বর্তমান পাসওয়ার্ড</label>
       <input id="cur-pin" type="password" maxlength="72" autocomplete="current-password">
-      <label for="new-pin">নতুন পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)</label>
+      <label for="new-pin">নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর বা সংখ্যা)</label>
       <input id="new-pin" type="password" maxlength="72" autocomplete="new-password">
       <label for="new-pin2">নতুন পাসওয়ার্ড আবার লিখুন</label>
       <input id="new-pin2" type="password" maxlength="72" autocomplete="new-password">
@@ -121,7 +121,7 @@
     if (/^0?1[0-9]{9}$/.test(id)) return "880" + id.replace(/^0/, "") + "@" + EMAIL_DOMAIN;  // মোবাইল → 880… অভিভাবক
     return id.toLowerCase() + "@" + EMAIL_DOMAIN;                                     // পুরনো আইডি (যেমন head01)
   }
-  const validPwd = (p) => typeof p === "string" && p.length >= 8 && p.length <= 72;
+  const validPwd = (p) => typeof p === "string" && p.length >= 6 && p.length <= 72;
 
   // ভূমিকা অনুযায়ী দেখানো
   async function showHome(user) {
@@ -152,7 +152,7 @@
     const idRaw = $("login-id").value.trim();
     const pin = $("login-pin").value;
     if (!idRaw) return showMsg($("login-msg"), "ইমেইল বা মোবাইল নম্বর লিখুন।", false);
-    if (!validPwd(pin)) return showMsg($("login-msg"), "পাসওয়ার্ড বা PIN কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
+    if (!validPwd(pin)) return showMsg($("login-msg"), "পাসওয়ার্ড বা PIN কমপক্ষে ৬ অক্ষরের হতে হবে।", false);
 
     const btn = $("login-btn");
     btn.disabled = true; btn.textContent = "যাচাই হচ্ছে…";
@@ -171,8 +171,8 @@
   $("pin-change-btn").addEventListener("click", async () => {
     clearMsg($("pin-msg"));
     const cur = $("cur-pin").value, n1 = $("new-pin").value, n2 = $("new-pin2").value;
-    if (!validPwd(cur)) return showMsg($("pin-msg"), "বর্তমান পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
-    if (!validPwd(n1)) return showMsg($("pin-msg"), "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
+    if (!validPwd(cur)) return showMsg($("pin-msg"), "বর্তমান পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।", false);
+    if (!validPwd(n1)) return showMsg($("pin-msg"), "নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।", false);
     if (n1 !== n2) return showMsg($("pin-msg"), "নতুন পাসওয়ার্ড দুবার একই হতে হবে।", false);
     if (n1 === cur) return showMsg($("pin-msg"), "নতুন পাসওয়ার্ড আগেরটির চেয়ে আলাদা হতে হবে।", false);
 

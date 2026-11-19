@@ -353,7 +353,8 @@
       <div class="grid">
         <div><label>শিক্ষকের নাম</label><input id="ct-name"></div>
         <div><label>শিক্ষকের ইমেইল</label><input id="ct-email" type="email" autocapitalize="off" spellcheck="false" placeholder="name@gmail.com"></div>
-        <div><label>প্রাথমিক পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)</label><input id="ct-pw" type="text" autocapitalize="off" spellcheck="false" maxlength="72"></div>
+        <div><label>শিক্ষকের মোবাইল (হোয়াটসঅ্যাপে পাঠানোর জন্য)</label><input id="ct-mobile" inputmode="tel" maxlength="11" placeholder="01XXXXXXXXX"></div>
+        <div><label>প্রাথমিক পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label><input id="ct-pw" type="text" autocapitalize="off" spellcheck="false" maxlength="72"><button type="button" id="ct-pw-gen" class="small" style="width:auto;margin-top:6px">অটো পাসওয়ার্ড বানান</button></div>
       </div>
       <label>শ্রেণি (একাধিক বাছাই করা যাবে)</label>
       <div id="ct-classes"></div>
@@ -2177,33 +2178,60 @@ document.getElementById("ct-create").addEventListener("click", async () => {
   const name = document.getElementById("ct-name").value.trim();
   const email = document.getElementById("ct-email").value.trim().toLowerCase();
   const pw = document.getElementById("ct-pw").value;
+  const mobile = document.getElementById("ct-mobile").value.trim();
+  if (mobile && !/^01[0-9]{9}$/.test(mobile)) return ctMsg("মোবাইল নম্বর ০১ দিয়ে শুরু ১১ সংখ্যার হতে হবে।", false);
   const classIds = [...document.querySelectorAll("#ct-classes input:checked")].map(i => i.value);
   if (!name) return ctMsg("শিক্ষকের নাম লিখুন।", false);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return ctMsg("সঠিক ইমেইল লিখুন।", false);
-  if (pw.length < 8) return ctMsg("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
+  if (pw.length < 6) return ctMsg("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।", false);
   if (!classIds.length) return ctMsg("অন্তত একটি শ্রেণি বাছাই করুন।", false);
   const btn = document.getElementById("ct-create");
   btn.disabled = true; btn.textContent = "তৈরি হচ্ছে…";
   try {
     const { data, error } = await ctSb.functions.invoke(CT_FN, { body: { action: "create", email, password: pw, role: "class_teacher" } });
     if (error || !data || !data.ok) return ctMsg("অ্যাকাউন্ট তৈরি হয়নি: " + await ctErrText(error, data), false);
-    const { data: t, error: tErr } = await ctSb.from("teachers").insert({ user_id: data.user_id, name }).select("id").single();
+    const { data: t, error: tErr } = await ctSb.from("teachers").insert({ user_id: data.user_id, name, mobile: mobile || null }).select("id").single();
     if (tErr) return ctMsg("লগইন তৈরি হয়েছে, কিন্তু শিক্ষকের তথ্য যোগ হয়নি: " + tErr.message, false);
     const { error: aErr } = await ctSb.from("class_teacher_assignments").insert(classIds.map(c => ({ teacher_id: t.id, class_id: c })));
     if (aErr) return ctMsg("শিক্ষক যোগ হয়েছে, কিন্তু শ্রেণি বরাদ্দ হয়নি: " + aErr.message, false);
     ctMsg(`"${name}" এর লগইন তৈরি হয়েছে। ইমেইল: ${email}। শিক্ষককে প্রাথমিক পাসওয়ার্ড জানিয়ে দিন।`, true);
-    ["ct-name", "ct-email", "ct-pw"].forEach(id => document.getElementById(id).value = "");
+    if (mobile) waOpen(mobile, waText(email, pw));
+    ["ct-name", "ct-email", "ct-pw", "ct-mobile"].forEach(id => document.getElementById(id).value = "");
     document.querySelectorAll("#ct-classes input").forEach(i => i.checked = false);
     await renderCtList();
   } finally { btn.disabled = false; btn.textContent = "অ্যাকাউন্ট তৈরি করুন"; }
 });
+// সহজে মনে রাখা ও টাইপ করা যায় এমন পাসওয়ার্ড: Msps + ৪ সংখ্যা (যেমন Msps4821)
+function autoPassword() {
+  const n = new Uint32Array(1);
+  crypto.getRandomValues(n);
+  return "Msps" + String(1000 + (n[0] % 9000));
+}
+document.getElementById("ct-pw-gen").addEventListener("click", () => {
+  document.getElementById("ct-pw").value = autoPassword();
+});
+// হোয়াটসঅ্যাপ বার্তা (বিনামূল্যে, wa.me লিংক): শিক্ষকের নম্বরে বার্তা খুলবে, আপনি শুধু "Send" চাপবেন
+function waText(email, pw) {
+  return `এম এস পাবলিক স্কুল ম্যানেজমেন্ট অ্যাপ।\nলগইন ইমেইল: ${email}\nপাসওয়ার্ড: ${pw}\nলগইন পেজ: https://mspublicschool.github.io/msps-school/login.html\nপ্রথম লগইনের পর পাসওয়ার্ড বদলে নেবেন।`;
+}
+function waOpen(mobile, text) {
+  const n = "880" + mobile.replace(/^0/, "");
+  window.open("https://wa.me/" + n + "?text=" + encodeURIComponent(text), "_blank");
+}
 async function ctResetPin(uid) {
-  const pw = prompt("নতুন পাসওয়ার্ড লিখুন (কমপক্ষে ৮ অক্ষর)");
-  if (pw === null) return;
-  if (pw.length < 8) return ctMsg("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।", false);
+  if (!confirm("এই শিক্ষকের পাসওয়ার্ড রিসেট করে নতুন পাসওয়ার্ড তৈরি করবেন?")) return;
+  const pw = autoPassword();
   const { data, error } = await ctSb.functions.invoke(CT_FN, { body: { action: "reset_password", user_id: uid, password: pw } });
   if (error || !data || !data.ok) return ctMsg("পাসওয়ার্ড বদলানো যায়নি: " + await ctErrText(error, data), false);
-  ctMsg("পাসওয়ার্ড বদলানো হয়েছে।", true);
+  const { data: t } = await ctSb.from("teachers").select("mobile").eq("user_id", uid).maybeSingle();
+  const { data: r } = await ctSb.from("user_roles").select("login_id").eq("user_id", uid).maybeSingle();
+  const email = (r && r.login_id) || "";
+  if (t && t.mobile) {
+    waOpen(t.mobile, waText(email, pw));
+    return ctMsg(`নতুন পাসওয়ার্ড (${pw}) হোয়াটসঅ্যাপে পাঠানোর জন্য খোলা হয়েছে। Send চাপুন।`, true);
+  }
+  ctMsg(`নতুন পাসওয়ার্ড: ${pw}। শিক্ষককে জানিয়ে দিন। প্রথম লগইনের পর পাসওয়ার্ড বদলাতে বলুন।`, true);
+  prompt("নতুন পাসওয়ার্ড (কপি করে শিক্ষককে পাঠান):", pw);
 }
 document.getElementById("ct-self-email-btn").addEventListener("click", async () => {
   const email = document.getElementById("ct-self-email").value.trim().toLowerCase();
