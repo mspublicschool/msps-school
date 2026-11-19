@@ -351,6 +351,17 @@
       <p class="note">"ভাউচার তৈরি" করলে বেতনের ভাউচার প্রধান শিক্ষকের অনুমোদনের জন্য যাবে। অনুমোদন হলে তবেই হিসাবে ব্যয় হিসেবে যোগ হবে।</p>
     </div>
     <!-- শিক্ষক লগইন অ্যাকাউন্ট (শুধু প্রধান শিক্ষক, Supabase) -->
+  <div class="card" id="par-card" style="margin:16px 0">
+    <h2>অভিভাবকের লগইন অ্যাকাউন্ট</h2>
+    <p class="note">অভিভাবক মোবাইল নম্বর ও PIN দিয়ে ঢুকবেন। PIN কমপক্ষে ৬ সংখ্যা। প্রথম লগইনের পর অভিভাবক নিজে PIN বদলে নেবেন।</p>
+    <div class="grid">
+      <div><label>অভিভাবকের নাম</label><input id="par-name"></div>
+      <div><label>অভিভাবকের মোবাইল</label><input id="par-mobile" inputmode="tel" maxlength="11" placeholder="01XXXXXXXXX"></div>
+      <div><label>প্রাথমিক PIN (৬–১২ সংখ্যা)</label><input id="par-pin" inputmode="numeric" maxlength="12"><button type="button" id="par-pin-gen" class="small" style="width:auto;margin-top:6px">অটো PIN বানান</button></div>
+    </div>
+    <button class="primary" id="par-create">অভিভাবক অ্যাকাউন্ট তৈরি করুন</button>
+    <p class="msg" id="par-msg"></p>
+  </div>
   <div class="card" id="ct-card" style="margin:16px 0">
     <h2>শিক্ষকের লগইন অ্যাকাউন্ট</h2>
     <p class="note" id="ct-state">শিক্ষক ট্যাব খুললে অবস্থা দেখাবে।</p>
@@ -2209,6 +2220,36 @@ async function renderCtList() {
   body.querySelectorAll("[data-ctpin]").forEach(b => b.addEventListener("click", () => ctResetPin(b.dataset.ctpin)));
   body.querySelectorAll("[data-ctact]").forEach(b => b.addEventListener("click", () => ctSetStatus(b.dataset.ctact, b.dataset.next)));
 }
+
+// ---------- অভিভাবকের অ্যাকাউন্ট ----------
+const parMsg = (t, ok) => showMsg(document.getElementById("par-msg"), t, ok);
+document.getElementById("par-pin-gen").addEventListener("click", () => {
+  const n = new Uint32Array(1);
+  crypto.getRandomValues(n);
+  document.getElementById("par-pin").value = String(100000 + (n[0] % 900000));
+});
+document.getElementById("par-create").addEventListener("click", async () => {
+  const name = document.getElementById("par-name").value.trim();
+  const mobile = document.getElementById("par-mobile").value.trim();
+  const pin = document.getElementById("par-pin").value.trim();
+  if (!name) return parMsg("অভিভাবকের নাম লিখুন।", false);
+  if (!/^01[0-9]{9}$/.test(mobile)) return parMsg("মোবাইল নম্বর ০১ দিয়ে শুরু ১১ সংখ্যার হতে হবে।", false);
+  if (!/^[0-9]{6,12}$/.test(pin)) return parMsg("PIN কমপক্ষে ৬ ও সর্বোচ্চ ১২ সংখ্যার হতে হবে।", false);
+  if (!ctSb) return parMsg("সংযোগ নেই। আবার লগইন করুন।", false);
+  const btn = document.getElementById("par-create");
+  btn.disabled = true;
+  try {
+    const login_id = "880" + mobile.replace(/^0/, "");
+    const { data, error } = await ctSb.functions.invoke(CT_FN, { body: { action: "create", login_id, pin, role: "parent" } });
+    if (error || !data || !data.ok) return parMsg("অভিভাবক অ্যাকাউন্ট তৈরি হয়নি: " + await ctErrText(error, data), false);
+    parMsg(`"${name}" এর অভিভাবক অ্যাকাউন্ট তৈরি হয়েছে।`, true);
+    waOpen(mobile, `এম এস পাবলিক স্কুল।\nঅভিভাবক লগইন:\nমোবাইল: ${mobile}\nPIN: ${pin}\nলগইন পেজ: https://mspublicschool.github.io/msps-school/login.html\nপ্রথম লগইনের পর PIN বদলে নেবেন।`);
+    ["par-name", "par-mobile", "par-pin"].forEach(id => document.getElementById(id).value = "");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 document.getElementById("ct-create").addEventListener("click", async () => {
   const name = document.getElementById("ct-name").value.trim();
   const email = document.getElementById("ct-email").value.trim().toLowerCase();
