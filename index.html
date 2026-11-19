@@ -68,7 +68,7 @@
   .tg .hd b { display:block; font-size:11pt; color:#1e2a78; }
   .tg .hd small { font-size:8.5pt; }
   .tg .ttl { text-align:center; margin:1.5mm auto 1mm; border:1.2px solid #000; padding:0.5mm 3mm; font-weight:700; font-size:10pt; }
-  .tg .info { font-size:8.2pt; line-height:1.4; }
+  .tg .info { font-size:8.2pt; line-height:1.4; margin-bottom:2.5mm; }
   .tg .info span { display:inline-block; border-bottom:1px dotted #000; min-width:20mm; padding:0 1mm; }
   .tg table { width:100%; border-collapse:collapse; font-size:7.8pt; margin-top:1mm; }
   .tg th, .tg td { border:1px solid #000; padding:0.5mm 1.2mm; line-height:1.25; }
@@ -1374,8 +1374,7 @@ function letterHtml(s, date, deadline) {
     <div class="hd"><b>এম.এস. পাবলিক স্কুল</b><small>শিলখালী (সাঁকুড়পাড়), পেকুয়া, কক্সবাজার</small></div>
     <div class="ttl">তাগিদ পত্র</div>
     <div class="info">
-      শিক্ষার্থীর নাম: <span>${esc(s.name)}</span> &nbsp; রোল নং: <span>${s.roll ?? "-"}</span><br>
-      শ্রেণি: <span>${esc(s.cls)}</span> &nbsp; তারিখ: <span>${dateBn(date)}</span>
+      শিক্ষার্থীর নাম: <span>${esc(s.name)}</span> &nbsp; রোল নং: <span>${s.roll ?? "-"}</span> &nbsp; শ্রেণি: <span>${esc(s.cls)}</span> &nbsp; তারিখ: <span>${dateBn(date)}</span>
     </div>
     <table>
       <thead><tr><th>ক্র.নং</th><th>বিবরণ</th><th class="num">টাকা</th></tr></thead>
