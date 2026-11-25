@@ -184,6 +184,8 @@
       <button class="primary" id="s-save">যোগ করুন</button>
       <button class="secondary hidden" id="s-cancel">বাতিল</button>
       <p class="msg" id="s-msg"></p>
+      <button class="secondary" id="s-cloud-sync">ক্লাউডে সব শিক্ষার্থী সিঙ্ক করুন</button>
+      <p class="msg" id="s-cloud-msg"></p>
     </div>
     <div class="card">
       <h2>এক্সেল / CSV থেকে আপলোড</h2>
@@ -984,6 +986,7 @@ function renderStudents() {
     if (!confirm(`"${s.name}" ও তার সব রেকর্ড মুছবেন?`)) return;
     state.students = state.students.filter(x => x.id !== s.id);
     save(); refreshAll();
+    cloudDeleteStudent(s.id);
   }));
 }
 document.getElementById("s-save").addEventListener("click", () => {
@@ -1020,8 +1023,144 @@ document.getElementById("s-save").addEventListener("click", () => {
   else if (pendingPhoto) savePhoto(sid, pendingPhoto);
   pendingPhoto = undefined;
   save(); resetStudentForm(); refreshAll();
+  const saved = state.students.find(x => x.id === sid);
+  if (saved) cloudUpsertStudent(saved);
 });
 document.getElementById("s-cancel").addEventListener("click", resetStudentForm);
+
+
+// ---------- ক্লাউড সিঙ্ক (Phase 2, ধাপ ১): স্থানীয় ডেটা থাকবে, একই সাথে Supabase-এও যাবে ----------
+// স্থানীয় শিক্ষার্থী আইডি থেকে স্থির কোড: LOC-<id>। ফোন/আয় ক্লাউডে যাচ্ছে না (পরের ধাপে)।
+const CLOUD_CLASS = { "নার্সারি": "নার্সারি", "স্ট্যান্ডার্ড": "স্ট্যান্ডার্ড", "ওয়ান": "স্ট্যান্ডার্ড ওয়ান", "টু": "স্ট্যান্ডার্ড টু", "থ্রি": "স্ট্যান্ডার্ড থ্রি", "ফোর": "স্ট্যান্ডার্ড ফোর", "ফাইভ": "স্ট্যান্ডার্ড ফাইভ" };
+let cloudClassMap = null;
+async function cloudClasses() {
+  if (cloudClassMap) return cloudClassMap;
+  const { data, error } = await ctSb.from("classes").select("id,name");
+  if (error || !data) return null;
+  cloudClassMap = Object.fromEntries(data.map(c => [c.name, c.id]));
+  return cloudClassMap;
+}
+function cloudRow(st, classId) {
+  return {
+    student_code: "LOC-" + st.id,
+    class_id: classId,
+    roll: st.roll ?? null,
+    name: st.name,
+    dob: st.dob || null,
+    father: st.father || null,
+    mother: st.mother || null,
+    address: st.address || null,
+    admission_type: st.admission === "new" ? "new" : "old",
+    poor: !!st.poor,
+    family_code: st.family || null,
+    religion: st.religion || null,
+    prev_school: st.prev || null,
+    whatsapp: !!st.whatsapp,
+    status: "active"
+  };
+}
+async function cloudUpsertStudent(st) {
+  if (!ctSb) return { ok: false, why: "সংযোগ নেই" };
+  try {
+    const map = await cloudClasses();
+    const classId = map && map[CLOUD_CLASS[st.cls]];
+    if (!classId) return { ok: false, why: `শ্রেণি "${st.cls}" ক্লাউডে পাওয়া যায়নি` };
+    const { error } = await ctSb.from("students").upsert(cloudRow(st, classId), { onConflict: "student_code" });
+    if (error) return { ok: false, why: error.message };
+    return { ok: true };
+  } catch (e) { return { ok: false, why: "নেটওয়ার্ক সমস্যা" }; }
+}
+async function cloudDeleteStudent(id) {
+  if (!ctSb) return;
+  try { await ctSb.from("students").delete().eq("student_code", "LOC-" + id); } catch (e) {}
+}
+document.getElementById("s-cloud-sync").addEventListener("click", async () => {
+  const out = document.getElementById("s-cloud-msg");
+  if (!ctSb) return showMsg(out, "সংযোগ নেই। প্রধান শিক্ষক হিসেবে লগইন করে আবার চেষ্টা করুন।", false);
+  const list = state.students;
+  if (!list.length) return showMsg(out, "সিঙ্ক করার মতো কোনো শিক্ষার্থী নেই।", false);
+  let ok = 0, pays = 0; const fails = [];
+  for (const st of list) {
+    const r = await cloudUpsertStudent(st);
+    if (!r.ok) { fails.push(`${st.name}: ${r.why}`); continue; }
+    ok++;
+    for (const p of (st.payments || [])) {
+      const pr = await cloudPushPayment(st, p, true);
+      if (pr.ok) pays++; else fails.push(`${st.name} রসিদ ${p.no}: ${pr.why}`);
+    }
+  }
+  const allRows = [];
+  for (const st of list) for (const ex of EXAMS) subjectsOf(st.cls).forEach((_, idx) => {
+    const val = state.marks[`${st.id}|${ex}|${idx}`];
+    if (val !== undefined) allRows.push({ st, exam: ex, idx, val });
+  });
+  const mk = allRows.length ? await cloudSaveMarks(allRows) : { ok: true };
+  if (!mk.ok) fails.push("নম্বর: " + mk.why);
+  showMsg(out, fails.length ? `${ok} জন শিক্ষার্থী ও ${pays} টি রসিদ সিঙ্ক হয়েছে। সমস্যা ${fails.length} টি: ${fails.slice(0, 3).join("; ")}` : `${ok} জন শিক্ষার্থী, ${pays} টি রসিদ ও ${allRows.length} টি নম্বর ক্লাউডে সিঙ্ক হয়েছে।`, fails.length === 0);
+});
+
+
+// ---------- ক্লাউড সিঙ্ক (ধাপ ২): ফি রসিদ fee_payments-এ ----------
+async function cloudPushPayment(st, p, skipStudent) {
+  if (!ctSb) return { ok: false, why: "সংযোগ নেই" };
+  try {
+    if (!skipStudent) {
+      const r = await cloudUpsertStudent(st);
+      if (!r.ok) return { ok: false, why: r.why };
+    }
+    const { data: row, error: sErr } = await ctSb.from("students").select("id").eq("student_code", "LOC-" + st.id).maybeSingle();
+    if (sErr || !row) return { ok: false, why: "শিক্ষার্থী ক্লাউডে পাওয়া যায়নি" };
+    const { data: dup } = await ctSb.from("fee_payments").select("id").eq("student_id", row.id).eq("receipt_no", p.no).maybeSingle();
+    if (dup) return { ok: true };   // আগেই সংরক্ষিত
+    const { error } = await ctSb.from("fee_payments").insert({
+      student_id: row.id,
+      receipt_no: p.no,
+      paid_on: p.date,
+      amount: p.amount,
+      items: { type: p.type || "", alloc: p.alloc || {}, waived: p.waived || {}, recommended_by: p.recommended_by || "", note: p.note || "" }
+    });
+    if (error) return { ok: false, why: error.message };
+    return { ok: true };
+  } catch (e) { return { ok: false, why: "নেটওয়ার্ক সমস্যা" }; }
+}
+
+
+// ---------- ক্লাউড সিঙ্ক (ধাপ ৩): পরীক্ষার নম্বর exam_marks-এ ----------
+async function cloudStudentIdMap() {
+  const { data, error } = await ctSb.from("students").select("id,student_code").like("student_code", "LOC-%");
+  if (error || !data) return null;
+  return Object.fromEntries(data.map(r => [r.student_code, r.id]));
+}
+// rows: [{st, exam, idx, val}] ; val = number | "A" | undefined (undefined হলে ক্লাউড থেকে মুছবে)
+async function cloudSaveMarks(rows) {
+  if (!ctSb) return { ok: false, why: "সংযোগ নেই" };
+  try {
+    const seen = new Set();
+    for (const r of rows) {
+      if (seen.has(r.st.id)) continue; seen.add(r.st.id);
+      const up = await cloudUpsertStudent(r.st);
+      if (!up.ok) return { ok: false, why: up.why };
+    }
+    const map = await cloudStudentIdMap();
+    if (!map) return { ok: false, why: "শিক্ষার্থীর তালিকা পাওয়া যায়নি" };
+    const upserts = [];
+    for (const r of rows) {
+      const sid = map["LOC-" + r.st.id];
+      if (!sid) return { ok: false, why: `${r.st.name} ক্লাউডে নেই` };
+      if (r.val === undefined || r.val === "") {
+        const { error } = await ctSb.from("exam_marks").delete().eq("student_id", sid).eq("exam", r.exam).eq("subject_index", r.idx);
+        if (error) return { ok: false, why: error.message };
+      } else {
+        upserts.push({ student_id: sid, exam: r.exam, subject_index: r.idx, mark: r.val === "A" ? null : r.val, absent: r.val === "A" });
+      }
+    }
+    for (let i = 0; i < upserts.length; i += 300) {
+      const { error } = await ctSb.from("exam_marks").upsert(upserts.slice(i, i + 300), { onConflict: "student_id,exam,subject_index" });
+      if (error) return { ok: false, why: error.message };
+    }
+    return { ok: true };
+  } catch (e) { return { ok: false, why: "নেটওয়ার্ক সমস্যা" }; }
+}
 
 // ---------- বিদায়ী শিক্ষার্থী ----------
 function leaveStudent(id) {
@@ -1356,6 +1495,10 @@ document.getElementById("c-save").addEventListener("click", () => {
   s.payments.push(p);
   save();
   showMsg(msg, `রসিদ ${p.no} তৈরি হয়েছে।`, true);
+  cloudPushPayment(s, p).then(r => {
+    const t = document.getElementById("c-msg");
+    if (t && t.textContent.includes(`রসিদ ${p.no}`)) showMsg(t, `রসিদ ${p.no} তৈরি হয়েছে। ${r.ok ? "ক্লাউডে সংরক্ষিত।" : "ক্লাউডে যায়নি: " + r.why}`, r.ok);
+  });
   document.getElementById("c-note").value = "";
   document.getElementById("c-recommend").value = "";
   showReceipt(s, p);
@@ -1536,6 +1679,15 @@ document.getElementById("m-save").addEventListener("click", () => {
   save();
   showMsg(msg, "নম্বর সংরক্ষিত হয়েছে।", true);
   refreshAll();
+  const rows = [];
+  for (const inp of inputs) {
+    const st = byId(+inp.dataset.sid);
+    if (st) rows.push({ st, exam, idx: +inp.dataset.idx, val: state.marks[`${inp.dataset.sid}|${exam}|${inp.dataset.idx}`] });
+  }
+  cloudSaveMarks(rows).then(r => {
+    const t = document.getElementById("m-msg");
+    if (t && t.textContent.includes("নম্বর সংরক্ষিত")) showMsg(t, `নম্বর সংরক্ষিত হয়েছে। ${r.ok ? "ক্লাউডে সংরক্ষিত।" : "ক্লাউডে যায়নি: " + r.why}`, r.ok);
+  });
 });
 
 // =====================================================
